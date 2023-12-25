@@ -29,8 +29,8 @@ parser.add_argument('--conf', default="conf/ctc_config.yaml", help='conf file fo
 parser.add_argument("--wav_transcript_path",default="/Users/daiyi/work/ramp/CTC-Attention-Mispronunciation/egs/TXHC_EXTRA/wav",help="input path")
 
 # could be from other sources
+parser.add_argument("--no_g2p_en", action="store_true", help="use phoneme from g2p_en, must have a source of phones, e.g, textgrid")
 parser.add_argument("--textgrid_path",default="/Users/daiyi/work/ramp/CTC-Attention-Mispronunciation/egs/TXHC_EXTRA/cmu_aligned",help="input textgrid path")
-parser.add_argument("--g2p_en", action="store_true", help="use phoneme from g2p_en, bypass textgrid")
 
 args = parser.parse_args()
 
@@ -226,9 +226,12 @@ def main():
     w1 = open(tmp_path+"/wav.scp",'w+')
     w4 = open(tmp_path+"/transcript_phn.txt",'w+')
     print(args.wav_transcript_path)
-    if not args.g2p_en:
-        print(args.textgrid_path)
-    
+    if args.no_g2p_en:
+        if not os.path.exists(args.textgrid_path):
+            print(args.textgrid_path + ' , not a valid textGrid source')
+    else:
+        args.textgrid_path = None # bypass
+
     total_wav_time = 0
     cnt = 0
     g2p = G2p()
@@ -270,7 +273,7 @@ def main():
         
         can_transcript_words_dict[utt_id] =  can_transcript_words
         
-        if not args.g2p_en:
+        if args.no_g2p_en:
             can_transcript_phns = []
             tmp1 = re.sub('wav', 'TextGrid', p)
             can_phn_path = os.path.normpath('/'.join([args.textgrid_path, tmp1]))

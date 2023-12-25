@@ -39,7 +39,7 @@ left_ctx: 0
 right_ctx: 2
 n_skip_frame: 2
 n_downsample: 2
-num_workers: 1
+num_workers: 0
 shuffle_train: True
 feature_dim: 81
 output_class_dim: 39
