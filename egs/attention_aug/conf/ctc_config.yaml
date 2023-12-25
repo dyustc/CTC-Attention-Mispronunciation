@@ -25,7 +25,7 @@ exp_name: 'best_model'
 # exp_name: 'random_0.1_bigbatch'
 # exp_name: 'ctc_fbank_cnn_vowel_consonants_mutation'
 # exp_name: 'norm'
-checkpoint_dir: 'checkpoint/'
+checkpoint_dir: 'data/'
 
 #Data
 vocab_file: 'data/units'

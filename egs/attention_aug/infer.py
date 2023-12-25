@@ -315,9 +315,11 @@ def main():
     cmd1 = 'compute-fbank-feats --config=conf/fbank.conf scp,p:{}/wav.scp ark:- | '.format(tmp_path)
     cmd2 = 'apply-cmvn --norm-vars=true {}/global_fbank_cmvn.txt ark:- ark:- | '.format('data')
     cmd3 = 'copy-feats --compress={} ark:- ark,scp:{}/fbank.ark,{}/fbank.scp'.format('false', tmp_path, tmp_path)
+    cmd4 = '>/dev/null 2>&1'
     cmd = cmd1 + cmd2 + cmd3
     # print(cmd)
-    os.system(cmd)
+    # os.system(cmd)
+    subprocess.check_output(cmd, shell=True, stderr=subprocess.STDOUT)
     infer(can_transcript_words_dict)
     
     end = time.time()
