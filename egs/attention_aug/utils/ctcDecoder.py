@@ -122,11 +122,14 @@ class Decoder(object):
 
         w1 = [word2int[w] for w in s1.split()]
         w2 = [word2int[w] for w in s2.split()]
-        return self._edit_distance(w1, w2)
+        ans, dp = self._edit_distance(w1, w2)
+        paths = self.printChanges(w1, w2, dp)
+        return ans, paths
 
     def cer(self, s1, s2):
         "计算字符错误率"
-        return self._edit_distance(s1, s2)
+        ans, _ = self._edit_distance(s1, s2)
+        return ans
     
     def _edit_distance(self, src_seq, tgt_seq):
         "计算两个序列的编辑距离，用来计算字符错误率"
@@ -146,8 +149,39 @@ class Decoder(object):
                 else:
                     cost = 1
                 dist[i][j] = min(dist[i][j-1] + 1, dist[i-1][j] + 1, dist[i-1][j-1] + cost)
-        return dist[L1][L2]
+        return dist[L1][L2], dist
 
+    def printChanges(self, s1, s2, dp):
+        ans = []
+        i = len(s1)
+        j = len(s2)
+    
+        # Check till the end 
+        while(i > 0 or j > 0):
+            if i == 0:
+                ans.append('D')
+                j -= 1
+            elif j == 0:
+                ans.append('I')
+                i -= 1
+            else:
+		        # If characters are same 
+                if s1[i - 1] == s2[j - 1]:
+                    i -= 1
+                    j -= 1
+                    ans.append('-')
+                elif dp[i][j] == dp[i - 1][j - 1] + 1:
+                    j -= 1
+                    i -= 1
+                    ans.append('S')
+                elif dp[i][j] == dp[i - 1][j] + 1:
+                    i -= 1
+                    ans.append('I')
+                elif dp[i][j] == dp[i][j - 1] + 1:
+                    j -= 1
+                    ans.append('D')
+    
+        return ans[::-1]
 
 class GreedyDecoder(Decoder):
     "直接解码，把每一帧的输出概率最大的值作为输出值，而不是整个序列概率最大的值"

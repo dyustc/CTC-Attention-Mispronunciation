@@ -82,6 +82,7 @@ verbose_step: 50
 test_scp_path: 'data/test/fbank.scp'
 test_lab_path: 'data/test/phn_text'
 test_trans_path: 'data/test/transcript_phn_text'
+test_wrd_path: 'data/test/wrd_text'
 decode_type: "Nono"
 beam_width: 10
 lm_alpha: 0

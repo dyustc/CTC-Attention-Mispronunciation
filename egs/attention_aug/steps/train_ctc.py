@@ -164,17 +164,17 @@ def main(conf):
     optimizer = torch.optim.Adam(model.parameters(), lr=init_lr, weight_decay=weight_decay)
     
     #visualization for training
-    from visdom import Visdom
-    viz = Visdom()
-    if add_cnn:
-        title = opts.feature_type + str(opts.feature_dim) + ' CNN_LSTM_CTC'
-    else:
-        title = opts.feature_type + str(opts.feature_dim) + ' LSTM_CTC'
+    # from visdom import Visdom
+    # viz = Visdom()
+    # if add_cnn:
+    #     title = opts.feature_type + str(opts.feature_dim) + ' CNN_LSTM_CTC'
+    # else:
+    #     title = opts.feature_type + str(opts.feature_dim) + ' LSTM_CTC'
 
-    viz_opts = [dict(title=title+" Loss", ylabel = 'Loss', xlabel = 'Epoch'),
-                dict(title=title+" Loss on Dev", ylabel = 'DEV Loss', xlabel = 'Epoch'),
-                dict(title=title+' CER on DEV', ylabel = 'DEV CER', xlabel = 'Epoch')]
-    viz_window = [None, None, None]
+    # viz_opts = [dict(title=title+" Loss", ylabel = 'Loss', xlabel = 'Epoch'),
+    #             dict(title=title+" Loss on Dev", ylabel = 'DEV Loss', xlabel = 'Epoch'),
+    #             dict(title=title+' CER on DEV', ylabel = 'DEV CER', xlabel = 'Epoch')]
+    # viz_window = [None, None, None]
     
     count = 0
     learning_rate = init_lr

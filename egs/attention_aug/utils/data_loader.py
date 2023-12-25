@@ -83,6 +83,7 @@ class SpeechDataset(Dataset):
             line = rf.readline()
             while line:
                 utt, path = line.strip().split(' ')
+                utt = utt.split(".")[0]
                 path_dict.append((utt, path))
                 line = rf.readline()
         
@@ -90,6 +91,8 @@ class SpeechDataset(Dataset):
         label_dict = dict()
         with open(self.lab_path, 'r') as rf:
             line = rf.readline()
+            # print(line)
+            # exit()
             while line:
                 utt, label = line.strip().split(' ', 1)
                 label_dict[utt] = [self.vocab.word2index[c] if c in self.vocab.word2index else self.vocab.word2index['UNK'] for c in label.split()]
@@ -100,17 +103,21 @@ class SpeechDataset(Dataset):
         trans_dict = dict()
         with open(self.trans_path, 'r') as rf:
             line = rf.readline()
+            # print(line)
+            # exit()
             while line:
                 utt, trans = line.strip().split(' ', 1)
                 trans_dict[utt] = [self.vocab.word2index[c] if c in self.vocab.word2index else self.vocab.word2index['UNK'] for c in trans.split()]
                 line = rf.readline() 
         
         assert len(path_dict) == len(label_dict)
+        assert len(path_dict) == len(trans_dict)
         print("Reading %d lines from %s" % (len(label_dict), self.lab_path))
         
         self.item = []
         for i in range(len(path_dict)):
             utt, path = path_dict[i]
+            # print(utt, path, label_dict.get(utt), trans_dict.get(utt))
             self.item.append((path, label_dict[utt],trans_dict[utt], utt))
 
     def __getitem__(self, idx):
