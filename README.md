@@ -1,21 +1,7 @@
-“A Full Text-Dependent End to End Mispronunciation Detection and Diagnosis with Easy Data Augment Techniques“
-https://arxiv.org/pdf/2104.08428.pdf
+# How to run
+` $ cd egs/attention_aug`
 
-Implemented with TIMIT and L2-Arctic Database:
+`$ python infer.py --wav_transcript_path ../sample`
 
-TIMIT :  -  
-L2-Arctic: (https://psi.engr.tamu.edu/l2-arctic-corpus/)
+本机 Mac需要配置好 Kaldi 环境， 结果打印格式参考终端截图。
 
-Note:  
-CNN-RNN-CTC is baseline.  
-attention_aug is our best system.
-
-Usage: 
-1. Just need to change your kaldi_path in path.sh and your data_path in run.sh
-2. ./run.sh  to get the decode sequence (decode_seq)
-3. mv decode_seq ./result/hyp
-   ./mdd_result.sh
-
-
-Next step:
-We will update the results on large datasets (such as Librispeech)

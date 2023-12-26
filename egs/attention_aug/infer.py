@@ -331,8 +331,7 @@ def infer(word_dict):
                 dc_path = [c for c in tmp3.split(' ') if c]
                 complete_score = sum([1 if c == 'D' or c == 'S' else 0 for c in dc_path])
                 
-                print(utt_list[x])
-                print(len(c_path), complete_score)
+                print('wav       : ' + utt_list[x])
                 print("text      : " + utterance)
                 repeatted_words_list = word_dict.get(utt_list[x], None)
                 # print(repeatted_words_list)
@@ -371,6 +370,7 @@ def infer(word_dict):
                 print("canonical : " + tmp1) 
                 print("            " + tmp3)
                 print("decode    : " + tmp2)
+                print('ratio     : ' + str(len(c_path)-complete_score) + '/'+ str(len(c_path)))
                 print("\n")
 
     w1.close()
