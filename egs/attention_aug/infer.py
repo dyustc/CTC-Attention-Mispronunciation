@@ -26,11 +26,11 @@ from steps.train_ctc import Config
 
 parser = argparse.ArgumentParser(description="infer with only wav and transcript")
 parser.add_argument('--conf', default="conf/ctc_config.yaml", help='conf file for train and infer')
-parser.add_argument("--wav_transcript_path",default="/Users/daiyi/work/ramp/CTC-Attention-Mispronunciation/egs/TXHC_EXTRA/wav",help="input path")
+parser.add_argument("--wav_transcript_path",default="/data2/daiyi/dataset/TXHC_EXTRA/wav",help="input path")
 
 # could be from other sources
 parser.add_argument("--no_g2p_en", action="store_true", help="use phoneme from g2p_en, must have a source of phones, e.g, textgrid")
-parser.add_argument("--textgrid_path",default="/Users/daiyi/work/ramp/CTC-Attention-Mispronunciation/egs/TXHC_EXTRA/cmu_aligned",help="input textgrid path")
+parser.add_argument("--textgrid_path",default="/data2/daiyi/dataset/TXHC_EXTRA/cmu_aligned",help="input textgrid path")
 
 args = parser.parse_args()
 
@@ -61,7 +61,9 @@ g_pairs = {
         'ah' : ['ao', 'ow'],
         'th' : 's',
         'ng' : 'n',
-        'dh' : 'z',
+        'dh' : ['z', 'd'],
+        'aw' : 'ah',
+        'ey' : 'eh'
         # 'n'  : 'ng',
         # 'z'  : 'dh',
     },
@@ -312,20 +314,25 @@ def infer(word_dict):
             
             for x in range(len(decoded_nosil)):
                 utterance = test_wrd_dict[utt_list[x]]
+                decoded_nosil[x] = decoded_nosil[x].replace('err', '')
+                decoded_nosil[x] = decoded_nosil[x].replace('  ', ' ')
                 _, dc_path = decoder.wer(decoded_nosil[x], canonicals_nosil[x])
                 # print(canonicals_nosil[x], len(canonicals_nosil[x].split(' ')))
                 # print(decoded_nosil[x], len(decoded_nosil[x].split(' ')))
-                complete_score1 = sum([1 if c == 'D' or c == 'S' else 0 for c in dc_path])
+                # complete_score1 = sum([1 if c == 'D' or c == 'S' else 0 for c in dc_path])
                 tmp1, tmp2, tmp3, canonical_len2, d2 = print_align_space_canonical_origin(decoded_nosil[x], canonicals_nosil[x], dc_path)
                 # print(tmp1, len([c for c in tmp1.split(' ') if c]))
                 # print(tmp3, len([c for c in tmp3.split(' ') if c]))
                 # print(tmp2, len([c for c in tmp2.split(' ') if c]))
                 tmp1, tmp3, tmp2 = mild2(tmp1, tmp3, tmp2)
-                tmp1, tmp3, tmp2 = mild1(tmp1, tmp3, tmp2, level = 2)
+                tmp1, tmp3, tmp2 = mild1(tmp1, tmp3, tmp2, level = 1)
+
+                c_path = [c for c in canonicals_nosil[x].split(' ') if c]
                 dc_path = [c for c in tmp3.split(' ') if c]
-                complete_score2 = sum([1 if c == 'D' or c == 'S' else 0 for c in dc_path])
+                complete_score = sum([1 if c == 'D' or c == 'S' else 0 for c in dc_path])
+                
                 print(utt_list[x])
-                print(complete_score1, complete_score2)
+                print(len(c_path), complete_score)
                 print("text      : " + utterance)
                 repeatted_words_list = word_dict.get(utt_list[x], None)
                 # print(repeatted_words_list)
@@ -364,6 +371,7 @@ def infer(word_dict):
                 print("canonical : " + tmp1) 
                 print("            " + tmp3)
                 print("decode    : " + tmp2)
+                print("\n")
 
     w1.close()
 
