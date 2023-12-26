@@ -43,6 +43,113 @@ def del_repeat_sil(phn_lst):
             tmp.append(phn_lst[i])
     return tmp
 
+g_pairs = {
+    '0' : {
+        'ah' : 'ae',
+        },
+    '1' : {
+        'ae' : 'eh',
+        'eh' : 'ae',
+        'ih' : 'iy',
+        'iy' : 'ih',
+    },
+    '2' : {
+        'aa' : 'ah',
+        'z'  : 's',
+        # 'ng' : 'n'
+    }
+}
+
+def mild1(s1, s2, s3, level = 1):
+    pairs = dict()
+    for i in range(level+1):
+        pairs.update(g_pairs[str(i)])
+
+    l1 = s1.split(' ')
+    l2 = s2.split(' ')
+    l3 = s3.split(' ')
+
+    i, j, k = 0, 0, 0
+    while i < len(l1) and j < len(l2) and k < len(l3):
+        while i < len(l1) and not l1[i]:
+            i += 1
+        while j < len(l2) and not l2[j]:
+            j += 1
+        while k < len(l3) and not l3[k]:
+            k += 1
+        
+        if i < len(l1) and j < len(l2) and k < len(l3):
+            if l1[i] in pairs and l2[j] == 'S' and l3[k] == pairs[l1[i]]:
+                l2[j] = '-'
+                l3[k] = l1[i]
+
+        i += 1
+        j += 1
+        k += 1
+
+    s1 = ' '.join(l1)
+    s2 = ' '.join(l2)
+    s3 = ' '.join(l3)
+
+    return s1, s2, s3
+
+def mild2(s1, s2, s3):
+    l1 = s1.split(' ')
+    l2 = s2.split(' ')
+    l3 = s3.split(' ')
+
+    i, j, k = 0, 0, 0
+    while l1[i] in ['I', ''] and l2[j] == l1[i]:
+        i += 1
+        j += 1
+        if l1[i]:
+            k += 1
+    
+    if k > 1:
+        k1 = 0
+        k2 = 0
+        while k1 < k - 1:
+            if l3[k2] != '':
+                k1 += 1
+            k2 += 1
+
+        l1 = l1[2 * (k-1):]
+        l2 = l2[2 * (k-1):]
+        l3 = l3[k2:]
+
+    l1 = l1[::-1]
+    l2 = l2[::-1]
+    l3 = l3[::-1]
+
+    i, j, k = 0, 0, 0
+    while l1[i] in ['I', ''] and l2[j] == l1[i]:
+        i += 1
+        j += 1
+        if l1[i]:
+            k += 1
+
+    if k > 2:
+        k1 = 0
+        k2 = 0
+        while k1 < k - 2:
+            if l3[k2] != '':
+                k1 += 1
+            k2 += 1
+
+        l1 = l1[2 * (k-2):]
+        l2 = l2[2 * (k-2):]
+        l3 = l3[k2:]
+    
+    l1 = l1[::-1]
+    l2 = l2[::-1]
+    l3 = l3[::-1]
+
+    s1 = ' '.join(l1)
+    s2 = ' '.join(l2)
+    s3 = ' '.join(l3)
+    
+    return s1, s2, s3
+
 def print_align_space_canonical_origin(s1, s2, l):
     p_s1 = s1.split(' ')
     p_s2 = s2.split(' ')
@@ -176,7 +283,18 @@ def infer(word_dict):
             for x in range(len(decoded_nosil)):
                 utterance = test_wrd_dict[utt_list[x]]
                 _, dc_path = decoder.wer(decoded_nosil[x], canonicals_nosil[x])
+                # print(canonicals_nosil[x], len(canonicals_nosil[x].split(' ')))
+                # print(decoded_nosil[x], len(decoded_nosil[x].split(' ')))
+                complete_score1 = sum([1 if c == 'D' or c == 'S' else 0 for c in dc_path])
                 tmp1, tmp2, tmp3, canonical_len2, d2 = print_align_space_canonical_origin(decoded_nosil[x], canonicals_nosil[x], dc_path)
+                # print(tmp1, len([c for c in tmp1.split(' ') if c]))
+                # print(tmp3, len([c for c in tmp3.split(' ') if c]))
+                # print(tmp2, len([c for c in tmp2.split(' ') if c]))
+                tmp1, tmp3, tmp2 = mild2(tmp1, tmp3, tmp2)
+                tmp1, tmp3, tmp2 = mild1(tmp1, tmp3, tmp2, level = 1)
+                dc_path = [c for c in tmp3.split(' ') if c]
+                complete_score2 = sum([1 if c == 'D' or c == 'S' else 0 for c in dc_path])
+                print(complete_score1, complete_score2)
                 print(utt_list[x])
                 print("text      : " + utterance)
                 repeatted_words_list = word_dict.get(utt_list[x], None)
