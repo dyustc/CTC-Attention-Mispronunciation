@@ -52,18 +52,39 @@ g_pairs = {
         'eh' : 'ae',
         'ih' : 'iy',
         'iy' : 'ih',
+        'er' : ['ah', 'aa'],
+        'v'  : 'w',
+        'w'  : 'v',
+        'ay' : 'ae',
+        'uw' : ['ah', 'uh'],
+        'aa' : ['ah', 'ao'],
+        'ah' : ['ao', 'ow'],
+        'th' : 's',
+        'ng' : 'n',
+        'dh' : 'z',
+        # 'n'  : 'ng',
+        # 'z'  : 'dh',
     },
     '2' : {
-        'aa' : 'ah',
         'z'  : 's',
-        # 'ng' : 'n'
     }
 }
 
 def mild1(s1, s2, s3, level = 1):
     pairs = dict()
     for i in range(level+1):
-        pairs.update(g_pairs[str(i)])
+        d = g_pairs[str(i)]
+        for k in d:
+            if k not in pairs:
+                if type(d[k]) == list:
+                    pairs[k] = d[k]
+                else:
+                    pairs[k] = [d[k]]
+            else:
+                if type(d[k]) == list:
+                    pairs[k] += d[k]
+                else:
+                    pairs[k].append(d[k])
 
     l1 = s1.split(' ')
     l2 = s2.split(' ')
@@ -79,10 +100,19 @@ def mild1(s1, s2, s3, level = 1):
             k += 1
         
         if i < len(l1) and j < len(l2) and k < len(l3):
-            if l1[i] in pairs and l2[j] == 'S' and l3[k] == pairs[l1[i]]:
+            if l1[i] in pairs and l2[j] == 'S' and l3[k] in pairs[l1[i]]:
                 l2[j] = '-'
-                l3[k] = l1[i]
-
+                if len(l3[k]) == len(l1[i]):
+                    l3[k] = l1[i]
+                else:
+                    if len(l3[k]) < len(l1[i]):
+                        if k+1 < len(l3):
+                            l3[k] = l1[i]
+                            l3.pop(k+1)
+                    else:
+                        if i+1 < len(l1):
+                            l1.pop(i+1)
+                            l3[k] = l1[i]
         i += 1
         j += 1
         k += 1
@@ -291,11 +321,11 @@ def infer(word_dict):
                 # print(tmp3, len([c for c in tmp3.split(' ') if c]))
                 # print(tmp2, len([c for c in tmp2.split(' ') if c]))
                 tmp1, tmp3, tmp2 = mild2(tmp1, tmp3, tmp2)
-                tmp1, tmp3, tmp2 = mild1(tmp1, tmp3, tmp2, level = 1)
+                tmp1, tmp3, tmp2 = mild1(tmp1, tmp3, tmp2, level = 2)
                 dc_path = [c for c in tmp3.split(' ') if c]
                 complete_score2 = sum([1 if c == 'D' or c == 'S' else 0 for c in dc_path])
-                print(complete_score1, complete_score2)
                 print(utt_list[x])
+                print(complete_score1, complete_score2)
                 print("text      : " + utterance)
                 repeatted_words_list = word_dict.get(utt_list[x], None)
                 # print(repeatted_words_list)
