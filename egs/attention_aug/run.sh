@@ -3,12 +3,13 @@
 #Author: Kaiqi Fu, JinHong Lin
 ./path.sh
 
-stage=0
+stage=4
+finish=4
 
 
 
-l2arctic_dir="/home/ljh/data/L2-Arctic/data" 
-timit_dir='/home/ljh/data/timit'
+l2arctic_dir="/data2/daiyi/dataset/l2arctic" 
+timit_dir='/data2/daiyi/dataset/Timit/data'
 phoneme_map='60-39'
 feat_dir='data'                            #dir to save feature
 feat_type='fbank'                          #fbank, mfcc, spectrogram
@@ -18,7 +19,7 @@ if [ ! -z $1 ]; then
     stage=$1
 fi
 
-if [ $stage -le 0 ]; then
+if [ $stage -le 0 ] && [ $finish -ge 0 ]; then
     echo "Step 0: Data Preparation ..."
 
     local/timit_data_prep.sh $timit_dir $phoneme_map || exit 1;
@@ -32,24 +33,25 @@ if [ $stage -le 0 ]; then
 
     python3 steps/get_model_units.py $feat_dir/train/phn_text
 fi
-if [ $stage -le 1 ]; then
+if [ $stage -le 1 ] && [ $finish -ge 1 ]; then
     #python3 steps/get_model_units.py $feat_dir/train/phn_text
     echo "Step 1: Feature Extraction..."
     steps/make_feat.sh $feat_type $feat_dir || exit 1;
 fi
-if [ $stage -le 2 ]; then
+if [ $stage -le 2 ] && [ $finish -ge 2 ]; then
     echo "Step 2: Acoustic Model(CTC) Training..."
-    CUDA_VISIBLE_DEVICE='0' python3 steps/train_ctc.py --conf $config_file || exit 1;
+    CUDA_VISIBLE_DEVICES='0' python3 steps/train_ctc.py --conf $config_file || exit 1;
 fi
 
 
-if [ $stage -le 3 ]; then
+if [ $stage -le 3 ] && [ $finish -ge 3 ]; then
     echo "Step 3: LM Model Training..."
     steps/train_lm.sh $feat_dir || exit 1;
 fi
 
-if [ $stage -le 4 ]; then
+if [ $stage -le 4 ] && [ $finish -ge 4 ]; then
     echo "Step 4: Decoding..."
-    CUDA_VISIBLE_DEVICE='1' python3 steps/test_ctc_nosil.py --conf $config_file || exit 1;
+    # CUDA_VISIBLE_DEVICES='0' python3 steps/test_ctc_nosil.py --conf $config_file || exit 1;
+    python3 steps/test_ctc_nosil.py --conf $config_file || exit 1;
 fi
 
