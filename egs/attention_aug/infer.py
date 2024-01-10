@@ -17,6 +17,7 @@ import re
 from g2p_en import G2p
 import soundfile as sf
 from termcolor import colored, cprint
+import librosa
 
 sys.path.append('./')
 from models.model_ctc import *
@@ -397,6 +398,8 @@ def main():
     silence_wav_path = './silence.wav'
     denoised_dir = os.path.normpath('/'.join([args.wav_transcript_path, 'denoised']))
     os.makedirs(denoised_dir, exist_ok=True)
+    far_data, fs = sf.read(silence_wav_path)
+    data_limit = len(far_data)
     for p in os.listdir(args.wav_transcript_path):
         if 'denoised' in p:
             continue
@@ -408,12 +411,20 @@ def main():
         
         cnt += 1
         wav_path = os.path.normpath('/'.join([args.wav_transcript_path, p]))
+        data, fs = sf.read(wav_path)
+        if fs != 16000:
+            data = librosa.resample(data, orig_sr=fs, target_sr=16000)
+            sf.write(wav_path, data, 16000)
 
         denoised_wav_path = os.path.normpath('/'.join([denoised_dir, p])) 
         cmd1 = ' '.join(['./bin/eeo_apm_test', wav_path, silence_wav_path, denoised_wav_path, '4', '0'])
         subprocess.check_output(cmd1, shell=True, stderr=subprocess.STDOUT)
 
         data, fs = sf.read(denoised_wav_path)
+        if len(data) > data_limit:
+            print('{} skipped, Cuz wav length should be no more than 3 minutes!'.format(wav_path))
+            continue
+
         total_wav_time += len(data) / fs
 
         tmp2 = re.sub('wav', 'txt', p)
