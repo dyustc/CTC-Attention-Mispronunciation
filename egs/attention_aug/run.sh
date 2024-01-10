@@ -3,7 +3,7 @@
 #Author: Kaiqi Fu, JinHong Lin
 ./path.sh
 
-stage=4
+stage=2
 finish=4
 
 

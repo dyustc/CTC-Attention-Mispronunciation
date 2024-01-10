@@ -17,22 +17,33 @@ class BatchRNN(nn.Module):
     Add BatchNorm before rnn to generate a batchrnn layer
     """
     def __init__(self, input_size, hidden_size, rnn_type=nn.LSTM, 
-                    bidirectional=False, batch_norm=True, dropout=0.1):
+                    bidirectional=False, batch_norm=True, dropout=0.1, skip = False):
         super(BatchRNN, self).__init__()
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.bidirectional = bidirectional
+        self.skip = skip
+        num_directions = 2 if self.bidirectional else 1
         self.batch_norm = nn.BatchNorm1d(input_size) if batch_norm else None
         self.rnn = rnn_type(input_size=input_size, hidden_size=hidden_size,
                                 bidirectional=bidirectional, bias=False)
+        if skip:
+            self.project = nn.Linear(input_size, hidden_size * num_directions)
+        else:
+            self.project = None
         self.dropout = nn.Dropout(p=dropout)
         
     def forward(self, x):
+        if self.project:
+            y = self.project(x)
+        
         if self.batch_norm is not None:
             x = x.transpose(-1, -2)
             x = self.batch_norm(x)
             x = x.transpose(-1, -2)
         x, _ = self.rnn(x)
+        if self.skip:
+            x = y + x
         x = self.dropout(x)
         #self.rnn.flatten_parameters()
         return x
@@ -126,7 +137,7 @@ class CTC_Model(nn.Module):
         bidirectional = rnn_param["bidirectional"]
         batch_norm = rnn_param["batch_norm"]
         rnn = BatchRNN(input_size=rnn_input_size, hidden_size=rnn_hidden_size, rnn_type=rnn_type, 
-                            bidirectional=bidirectional, dropout=drop_out, batch_norm=False)
+                            bidirectional=bidirectional, dropout=drop_out, batch_norm=False, skip = False)
         rnns.append(('0', rnn))
         for i in range(rnn_layers-1):
             rnn = BatchRNN(input_size=self.num_directions*rnn_hidden_size, hidden_size=rnn_hidden_size, rnn_type=rnn_type, 
@@ -157,6 +168,7 @@ class CTC_Model(nn.Module):
         
         if self.add_cnn:
             x = self.conv(x.unsqueeze(1))
+            # print('after cnn ', x.shape)
             
             if visualize:
                 visual.append(x)
@@ -172,6 +184,7 @@ class CTC_Model(nn.Module):
                 visual.append(x)
 
             x = self.rnns(x)
+            # print('after rnn ', x.shape)
             x = x.transpose(0,1)
             
             x1 = self.embeds(x1)
@@ -179,21 +192,17 @@ class CTC_Model(nn.Module):
             # [batch,Char_num,Hidden_unit]
             # value
             x1 , _ = self.lstm_embeds(x1)
-            #x1 = self.score(x1)
             
             # key
             key = self.score(x1)
             
+            # query
             attn_score = torch.bmm(x, key.transpose(1, 2))
-            attn_max, _ = torch.max(attn_score, dim=-1, keepdim=True) 
-            exp_score = torch.exp(attn_score - attn_max)
-
-            attn_weights = exp_score
-            weights_denom = torch.sum(attn_weights, dim=-1, keepdim=True)   
-            attn_weights = attn_weights / (weights_denom + 1e-30)
+            attn_weights = nn.functional.softmax(attn_score, dim= -1)
+            
             c = torch.bmm(attn_weights, x1)
             
-            # query and context concat
+            # context concat
             out1 = torch.cat((x, c), -1)
             x = out1.transpose(0,1).contiguous()
             

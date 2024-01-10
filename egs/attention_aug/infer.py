@@ -6,6 +6,7 @@ import re
 import argparse
 import sys
 import subprocess
+import shutil
 
 import time
 import torch
@@ -63,7 +64,8 @@ g_pairs = {
         'ng' : 'n',
         'dh' : ['z', 'd'],
         'aw' : 'ah',
-        'ey' : 'eh'
+        'ey' : 'eh',
+        'uh' : 'ow',
         # 'n'  : 'ng',
         # 'z'  : 'dh',
     },
@@ -392,7 +394,13 @@ def main():
     cnt = 0
     g2p = G2p()
     can_transcript_words_dict = dict()
+    silence_wav_path = './silence.wav'
+    denoised_dir = os.path.normpath('/'.join([args.wav_transcript_path, 'denoised']))
+    os.makedirs(denoised_dir, exist_ok=True)
     for p in os.listdir(args.wav_transcript_path):
+        if 'denoised' in p:
+            continue
+
         ext = p.split('.')[1]
         utt_id = p.split('.')[0]
         if ext != 'wav':
@@ -400,11 +408,19 @@ def main():
         
         cnt += 1
         wav_path = os.path.normpath('/'.join([args.wav_transcript_path, p]))
-        data, fs = sf.read(wav_path)
+
+        denoised_wav_path = os.path.normpath('/'.join([denoised_dir, p])) 
+        cmd1 = ' '.join(['./bin/eeo_apm_test', wav_path, silence_wav_path, denoised_wav_path, '4', '0'])
+        subprocess.check_output(cmd1, shell=True, stderr=subprocess.STDOUT)
+
+        data, fs = sf.read(denoised_wav_path)
         total_wav_time += len(data) / fs
 
         tmp2 = re.sub('wav', 'txt', p)
-        text_path = os.path.normpath('/'.join([args.wav_transcript_path, tmp2]))
+        text_path = os.path.normpath('/'.join([args.wav_transcript_path, tmp2]))                
+        
+        if not os.path.exists(text_path):
+            continue
 
         can_transcript_phns = []
         can_transcript_words = []
@@ -461,22 +477,25 @@ def main():
                     else:
                         can_transcript_phns.append(trans_phn.lower())
                 
-        w1.write(utt_id + " " + wav_path + "\n" )
+        w1.write(utt_id + " " + denoised_wav_path + "\n" )
         w4.write(utt_id + " " + " ".join(del_repeat_sil(can_transcript_phns)) + "\n" )
     
     w.close()
     w1.close()
     w4.close()
 
-    cmd1 = 'compute-fbank-feats --config=conf/fbank.conf scp,p:{}/wav.scp ark:- | '.format(tmp_path)
-    cmd2 = 'apply-cmvn --norm-vars=true {}/global_fbank_cmvn.txt ark:- ark:- | '.format('data')
-    cmd3 = 'copy-feats --compress={} ark:- ark,scp:{}/fbank.ark,{}/fbank.scp'.format('false', tmp_path, tmp_path)
+    cmd1 = './bin/compute-fbank-feats --config=conf/fbank.conf scp,p:{}/wav.scp ark:- | '.format(tmp_path)
+    cmd2 = './bin/apply-cmvn --norm-vars=true {}/global_fbank_cmvn.txt ark:- ark:- | '.format('data')
+    cmd3 = './bin/copy-feats --compress={} ark:- ark,scp:{}/fbank.ark,{}/fbank.scp'.format('false', tmp_path, tmp_path)
     cmd4 = '>/dev/null 2>&1'
     cmd = cmd1 + cmd2 + cmd3
     # print(cmd)
     # os.system(cmd)
     subprocess.check_output(cmd, shell=True, stderr=subprocess.STDOUT)
     infer(can_transcript_words_dict)
+
+    # remove denoise dir
+    shutil.rmtree(denoised_dir) 
     
     end = time.time()
     time_used = (end - start)

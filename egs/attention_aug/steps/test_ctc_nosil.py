@@ -134,6 +134,7 @@ def test():
     total_phonemes_in_canonical = 0
 
     # mandarin
+    m_speaker = ['TXHC']
     m_true_accept = 0
     m_false_rejection = 0
     m_false_accept = 0
@@ -203,7 +204,7 @@ def test():
                 _, dc_path = decoder.wer(decoded_nosil[x], canonicals_nosil[x])
 
                 tmp1, tmp2, tmp3, d1 = print_align_space_canonical_origin(labels_nosil[x], canonicals_nosil[x], lc_path)
-                # if utt_list[x][:4] == 'TXHC':
+                # if utt_list[x][:4] in m_speaker:
                 #     print(utt_list[x])
                 #     utterance = test_wrd_dict[utt_list[x]]
                 #     print("text      : " + utterance)
@@ -211,37 +212,37 @@ def test():
                 #     print("            " + tmp3)
                 #     print("canonical : " + tmp1)
                 tmp1, tmp2, tmp3, d2 = print_align_space_canonical_origin(decoded_nosil[x], canonicals_nosil[x], dc_path)
-                # if utt_list[x][:4] == 'TXHC':
+                # if utt_list[x][:4] in m_speaker:
                 #     print("canonical : " + tmp1) 
                 #     print("            " + tmp3)
                 #     print("decode    : " + tmp2)
 
                 total_phonemes_in_canonical += len(d1.keys()) - 1
-                if utt_list[x][:4] == 'TXHC':
+                if utt_list[x][:4] in m_speaker:
                     m_total_phonemes_in_canonical += len(d1.keys()) - 1
                 
                 for k in d1.keys():
                     if k != 'I':
                         if d1[k] == '-' and d2[k] == '-':
                             true_accept += 1
-                            if utt_list[x][:4] == 'TXHC':
+                            if utt_list[x][:4] in m_speaker:
                                 m_true_accept += 1
                         elif d1[k] == '-' and d2[k] != '-':
                             false_rejection += 1
-                            if utt_list[x][:4] == 'TXHC':
+                            if utt_list[x][:4] in m_speaker:
                                 m_false_rejection += 1
                         elif d1[k] != '-' and d2[k] == '-':
                             false_accept += 1
-                            if utt_list[x][:4] == 'TXHC':
+                            if utt_list[x][:4] in m_speaker:
                                 m_false_accept += 1
                         else:
                             if d1[k] == d2[k]:
                                 true_rejection_correct_diagnose += 1
-                                if utt_list[x][:4] == 'TXHC':
+                                if utt_list[x][:4] in m_speaker:
                                     m_true_rejection_correct_diagnose += 1
                             else:
                                 true_rejection_wrong_diagnose += 1
-                                if utt_list[x][:4] == 'TXHC':
+                                if utt_list[x][:4] in m_speaker:
                                     m_true_rejection_wrong_diagnose += 1
                     else:
                         # pass
@@ -249,11 +250,11 @@ def test():
                             pass
                         elif d1['I'] != [] and d2['I'] == []:
                             false_accept += len(d1['I'])
-                            if utt_list[x][:4] == 'TXHC':
+                            if utt_list[x][:4] in m_speaker:
                                 m_false_accept += 1
                         elif d1['I'] == [] and d2['I'] != []:
                             false_rejection += len(d2['I'])
-                            if utt_list[x][:4] == 'TXHC':
+                            if utt_list[x][:4] in m_speaker:
                                 m_false_rejection += 1
                         else:
                             for e in d1['I']:
@@ -261,18 +262,18 @@ def test():
                                     d1['I'].remove(e)
                                     d2['I'].remove(e)
                                     true_rejection_correct_diagnose += 1
-                                    if utt_list[x][:4] == 'TXHC':
+                                    if utt_list[x][:4] in m_speaker:
                                         m_true_rejection_correct_diagnose += 1
                             false_accept += len(d1['I'])
                             false_rejection += len(d2['I'])
-                            if utt_list[x][:4] == 'TXHC':
+                            if utt_list[x][:4] in m_speaker:
                                 m_false_accept += len(d1['I'])
                                 m_false_rejection += len(d2['I'])          
                 
                 total_wer += tmp
                 decoder.num_word += len(labels_nosil[x].split(" "))
 
-                if utt_list[x][:4] == 'TXHC':
+                if utt_list[x][:4] in m_speaker:
                     m_wer += tmp
                     m_decoder_num += len(labels_nosil[x].split(" "))
     
