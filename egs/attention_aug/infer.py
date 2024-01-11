@@ -67,6 +67,9 @@ g_pairs = {
         'aw' : 'ah',
         'ey' : 'eh',
         'uh' : 'ow',
+        'ao' : 'aa',
+        'm'  : 'n',
+        'n'  : 'm',
         # 'n'  : 'ng',
         # 'z'  : 'dh',
     },
@@ -347,14 +350,18 @@ def infer(word_dict):
                 insertion_cnt_preview = sum([e == 'I' for e in dc_path])
                 if len(dc_path)-insertion_cnt_preview < repeatted_words_list[-1][-1]+1:
                     continue
-
+                # print(repeatted_words_list)
                 for l in repeatted_words_list:
                     w, start, end = l
                     k = start + insertion_cnt
                     is_word_added = False
+                    total_phones = end - start + 1
+                    sd_cnt = 0
+                    display_threshold = 0.5
                     while k <= end + insertion_cnt:
                         if dc_path[k] == 'S' or dc_path[k] == 'D':
-                            if not is_word_added:
+                            sd_cnt += 1
+                            if not is_word_added and sd_cnt >= math.ceil(total_phones * display_threshold):
                                 formatted_text.append(colored(w, 'red', attrs=['bold']))
                                 is_word_added = True
                             k += 1
