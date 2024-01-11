@@ -407,6 +407,11 @@ def main():
     os.makedirs(denoised_dir, exist_ok=True)
     far_data, fs = sf.read(silence_wav_path)
     data_limit = len(far_data)
+    old = os.environ.get('DYLD_LIBRARY_PATH')
+    if './bin:' not in old:
+        os.environ['DYLD_LIBRARY_PATH'] = "./bin:" + old
+    # print(os.environ.get('DYLD_LIBRARY_PATH'))
+    # export DYLD_LIBRARY_PATH=.:$DYLD_LIBRARY_PATH
     for p in os.listdir(args.wav_transcript_path):
         if 'denoised' in p:
             continue
