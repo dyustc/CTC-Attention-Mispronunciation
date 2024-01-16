@@ -368,9 +368,9 @@ def infer(word_dict):
                         elif dc_path[k] == '-':
                             k += 1
                         else:
-                            if not is_word_added:
-                                formatted_text.append(colored(w, 'red', attrs=['bold']))
-                                is_word_added = True
+                            # if not is_word_added:
+                            #     formatted_text.append(colored(w, 'red', attrs=['bold']))
+                            #     is_word_added = True
                             k += 1
                             insertion_cnt += 1
                     if not is_word_added:
