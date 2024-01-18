@@ -153,7 +153,10 @@ def mild2(s1, s2, s3):
 
         l1 = l1[2 * (k-1):]
         l2 = l2[2 * (k-1):]
-        l3 = l3[k2:]
+        if l3[k2] == '':
+            l3 = l3[k2+1:]
+        else:
+            l3 = l3[k2:]
 
     l1 = l1[::-1]
     l2 = l2[::-1]
@@ -357,7 +360,7 @@ def infer(word_dict):
                     is_word_added = False
                     total_phones = end - start + 1
                     sd_cnt = 0
-                    display_threshold = 0.5
+                    display_threshold = 0.4
                     while k <= end + insertion_cnt:
                         if dc_path[k] == 'S' or dc_path[k] == 'D':
                             sd_cnt += 1
@@ -419,6 +422,9 @@ def main():
         cnt += 1
         wav_path = os.path.normpath('/'.join([args.wav_transcript_path, p]))
         data, fs = sf.read(wav_path)
+        if len(data.shape) != 1:
+            data = data[:, 0]
+
         if fs != 16000:
             data = librosa.resample(data, orig_sr=fs, target_sr=16000)
             sf.write(wav_path, data, 16000)
