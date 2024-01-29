@@ -239,6 +239,7 @@ def infer_init():
 
     use_cuda = opts.use_gpu
     use_cuda = False
+    #print(use_cuda)
     device = torch.device('cuda:0') if use_cuda else torch.device('cpu')
     
     model_path = os.path.join(opts.checkpoint_dir, opts.exp_name, 'ctc_best_model.pkl')
@@ -436,7 +437,7 @@ def main():
             sf.write(wav_path, data, 16000)
 
         denoised_wav_path = os.path.normpath('/'.join([denoised_dir, p])) 
-        cmd1 = ' '.join(['./bin/eeo_apm_test', wav_path, silence_wav_path, denoised_wav_path, '4', '0'])
+        cmd1 = ' '.join(['./bin/linux/eeo_apm_test', wav_path, silence_wav_path, denoised_wav_path, '4', '0'])
         subprocess.check_output(cmd1, shell=True, stderr=subprocess.STDOUT)
 
         data, fs = sf.read(denoised_wav_path)
@@ -523,9 +524,9 @@ def main():
     w1.close()
     w4.close()
     t3 = time.time()
-    cmd1 = './bin/compute-fbank-feats --config=conf/fbank.conf scp,p:{}/wav.scp ark:- | '.format(tmp_path)
-    cmd2 = './bin/apply-cmvn --norm-vars=true {}/global_fbank_cmvn.txt ark:- ark:- | '.format('data')
-    cmd3 = './bin/copy-feats --compress={} ark:- ark,scp:{}/fbank.ark,{}/fbank.scp'.format('false', tmp_path, tmp_path)
+    cmd1 = './bin/linux/compute-fbank-feats --config=conf/fbank.conf scp,p:{}/wav.scp ark:- | '.format(tmp_path)
+    cmd2 = './bin/linux/apply-cmvn --norm-vars=true {}/global_fbank_cmvn.txt ark:- ark:- | '.format('data')
+    cmd3 = './bin/linux/copy-feats --compress={} ark:- ark,scp:{}/fbank.ark,{}/fbank.scp'.format('false', tmp_path, tmp_path)
     cmd4 = '>/dev/null 2>&1'
     cmd = cmd1 + cmd2 + cmd3
     # print(cmd)
@@ -535,7 +536,7 @@ def main():
     infer(can_transcript_words_dict, test_loader, device, model, decoder, vocab, test_wrd_dict)
 
     # remove denoise dir
-    # shutil.rmtree(denoised_dir) 
+    shutil.rmtree(denoised_dir) 
     
     end = time.time()
     time_used = (end - t0)
