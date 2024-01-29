@@ -6,7 +6,7 @@ if len(sys.argv) != 2:
     sys.exit(1)
 
 train_text = sys.argv[1]
-units_file = 'data/units'
+units_file = train_text.split('/')[0] + '/units'
 
 units = {}
 with open(train_text, 'r') as fin:   

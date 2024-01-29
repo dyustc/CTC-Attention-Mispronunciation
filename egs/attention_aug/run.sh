@@ -3,7 +3,7 @@
 #Author: Kaiqi Fu, JinHong Lin
 ./path.sh
 
-stage=2
+stage=0
 finish=4
 
 
@@ -26,14 +26,17 @@ if [ $stage -le 0 ] && [ $finish -ge 0 ]; then
     python3 local/l2arctic_prep.py --l2_path=$l2arctic_dir --save_path=${feat_dir}/l2_train  
     python3 local/l2arctic_prep.py --l2_path=$l2arctic_dir --save_path=${feat_dir}/l2_dev  
     python3 local/l2arctic_prep.py --l2_path=$l2arctic_dir --save_path=${feat_dir}/l2_test
+
+    local/timit_l2_merge.sh ${feat_dir}/train_timit ${feat_dir}/l2_train ${feat_dir}/train
+    rm -rf ${feat_dir}/l2_train ${feat_dir}/train_timit
+    
+    #local/timit_l2_merge.sh ${feat_dir}/dev_timit ${feat_dir}/l2_dev ${feat_dir}/dev
+    #rm -rf ${feat_dir}/l2_dev ${feat_dir}/dev_timit
+    
+    #local/timit_l2_merge.sh ${feat_dir}/test_timit ${feat_dir}/l2_test ${feat_dir}/test
+    #rm -rf ${feat_dir}/l2_test ${feat_dir}/test_timit
     mv ${feat_dir}/l2_dev ${feat_dir}/dev  
     mv ${feat_dir}/l2_test ${feat_dir}/test
-    local/timit_l2_merge.sh ${feat_dir}/train_timit ${feat_dir}/l2_train ${feat_dir}/train
-    #local/timit_l2_merge.sh ${feat_dir}/dev_timit ${feat_dir}/l2_dev ${feat_dir}/dev
-    #local/timit_l2_merge.sh ${feat_dir}/test_timit ${feat_dir}/l2_test ${feat_dir}/test
-    rm -rf ${feat_dir}/l2_train ${feat_dir}/train_timit
-    #rm -rf ${feat_dir}/l2_dev ${feat_dir}/dev_timit
-    #rm -rf ${feat_dir}/l2_test ${feat_dir}/test_timit
 
     python3 steps/get_model_units.py $feat_dir/train/phn_text
 fi
