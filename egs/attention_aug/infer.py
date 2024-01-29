@@ -7,6 +7,7 @@ import argparse
 import sys
 import subprocess
 import shutil
+import platform
 
 import time
 import torch
@@ -395,6 +396,13 @@ def infer(word_dict, test_loader, device, model, decoder, vocab, test_wrd_dict):
     w1.close()
 
 def main():
+    system = platform.system()
+    subfolder = ''
+    if system == 'Darwin':
+        subfolder = 'mac'
+    else:
+        subfolder = 'linux'
+
     t0 = time.time()
     tmp_path = args.wav_transcript_path
     w = open(tmp_path+"/wrd.txt",'w+')
@@ -423,6 +431,7 @@ def main():
             continue
 
         ext = p.split('.')[1]
+        utt_id = p.split('.')[0]
         if ext != 'wav':
             continue
         
@@ -437,7 +446,7 @@ def main():
             sf.write(wav_path, data, 16000)
 
         denoised_wav_path = os.path.normpath('/'.join([denoised_dir, p])) 
-        cmd1 = ' '.join(['./bin/linux/eeo_apm_test', wav_path, silence_wav_path, denoised_wav_path, '4', '0'])
+        cmd1 = ' '.join(['./bin/{}/eeo_apm_test'.format(subfolder), wav_path, silence_wav_path, denoised_wav_path, '4', '0'])
         subprocess.check_output(cmd1, shell=True, stderr=subprocess.STDOUT)
 
         data, fs = sf.read(denoised_wav_path)
@@ -446,7 +455,9 @@ def main():
             continue
 
         total_wav_time += len(data) / fs
-
+        w1.write(utt_id + " " + denoised_wav_path + "\n" )
+    w1.close()
+    
     t2 = time.time()
     for p in os.listdir(args.wav_transcript_path):
         if 'denoised' in p:
@@ -516,17 +527,14 @@ def main():
                         can_transcript_phns.append("w")    
                     else:
                         can_transcript_phns.append(trans_phn.lower())
-                
-        w1.write(utt_id + " " + denoised_wav_path + "\n" )
         w4.write(utt_id + " " + " ".join(del_repeat_sil(can_transcript_phns)) + "\n" )
     
     w.close()
-    w1.close()
     w4.close()
     t3 = time.time()
-    cmd1 = './bin/linux/compute-fbank-feats --config=conf/fbank.conf scp,p:{}/wav.scp ark:- | '.format(tmp_path)
-    cmd2 = './bin/linux/apply-cmvn --norm-vars=true {}/global_fbank_cmvn.txt ark:- ark:- | '.format('data')
-    cmd3 = './bin/linux/copy-feats --compress={} ark:- ark,scp:{}/fbank.ark,{}/fbank.scp'.format('false', tmp_path, tmp_path)
+    cmd1 = './bin/{}/compute-fbank-feats --config=conf/fbank.conf scp,p:{}/wav.scp ark:- | '.format(subfolder, tmp_path)
+    cmd2 = './bin/{}/apply-cmvn --norm-vars=true {}/global_fbank_cmvn.txt ark:- ark:- | '.format(subfolder, 'data')
+    cmd3 = './bin/{}/copy-feats --compress={} ark:- ark,scp:{}/fbank.ark,{}/fbank.scp'.format(subfolder, 'false', tmp_path, tmp_path)
     cmd4 = '>/dev/null 2>&1'
     cmd = cmd1 + cmd2 + cmd3
     # print(cmd)
