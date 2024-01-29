@@ -37,7 +37,7 @@ def run_epoch(epoch_id, model, data_iter, loss_fn, device, optimizer=None, print
     cur_loss = 0
     
     
-    
+    # print(len(data_iter))
     
     for i, data in enumerate(data_iter):
         inputs, input_sizes, targets, target_sizes,trans,trans_sizes, utt_list = data
@@ -49,30 +49,38 @@ def run_epoch(epoch_id, model, data_iter, loss_fn, device, optimizer=None, print
         trans = trans.to(device)
         trans_sizes = trans_sizes.to(device)
 
-  
+        # TODO: why turn on or off add_cnn switch would affect this, currently only on would make the train script work
+        #print('inputs 0', inputs.shape) # N, L, H // L的含义：该batch里最长的一个case的长度
+        #print('inputs 1', trans.shape) # N, L // L的含义: 该batch里最长的一个case的长度
+        #print('targets', targets.shape)
+        
        
         out = model(inputs,trans)
+        #print('outs ', out.shape)
         
         out_len, batch_size, _ = out.size()
         
         input_sizes = (input_sizes * out_len).long()
         loss = loss_fn(out, targets, input_sizes, target_sizes)
         loss /= batch_size
-        cur_loss += loss.item()
+        # cur_loss += loss.item()
         total_loss += loss.item()
         prob, index = torch.max(out, dim=-1)
-        
+        #print(input_sizes, target_sizes)
+        #print(index, targets)
+        #exit()
         batch_errs, batch_tokens= model.compute_wer(index.transpose(0,1).cpu().numpy(), input_sizes.cpu().numpy(), targets.cpu().numpy(), target_sizes.cpu().numpy())
-        
+        # print(batch_errs, batch_tokens)
+        # exit()
         # print('targets:', targets.shape)
         # print('pred:', np.asarray(pred).shape)
         total_errs += batch_errs
         total_tokens += batch_tokens
 
         if (i + 1) % print_every == 0 and is_training:
-            print('Epoch = %d, step = %d, cur_loss = %.4f, total_loss = %.4f, total_wer = %.4f' % (epoch_id, 
-                                    i+1, cur_loss / print_every, total_loss / (i+1), total_errs / total_tokens ))
-            cur_loss = 0
+            print('Epoch = %d, step = %d, total_loss = %.4f, total_wer = %.4f' % (epoch_id, 
+                                    i+1, total_loss / (i+1), total_errs / total_tokens ))
+            # cur_loss = 0
         
         if is_training:    
             optimizer.zero_grad()
@@ -205,7 +213,7 @@ def main(conf):
         train_acc, loss = run_epoch(count, model, train_loader, loss_fn, device, optimizer=optimizer, print_every=opts.verbose_step, is_training=True)
         loss_results.append(loss)
         acc, dev_loss = run_epoch(count, model, dev_loader, loss_fn, device, optimizer=None, print_every=opts.verbose_step, is_training=False)
-        print("loss on dev set is %.4f" % dev_loss)
+        # print("loss on dev set is %.4f" % dev_loss)
         dev_loss_results.append(dev_loss)
         dev_cer_results.append(acc)
         
@@ -230,8 +238,7 @@ def main(conf):
             best_model_state = copy.deepcopy(model.state_dict())
             best_op_state = copy.deepcopy(optimizer.state_dict())
 
-        print("adjust_rate_count:"+str(adjust_rate_count))
-        print('adjust_time:'+str(adjust_time))
+        print("adjust_rate_count:"+str(adjust_rate_count) +' adjust_time:'+str(adjust_time))
 
         if adjust_rate_count == 10:
             adjust_rate_flag = True
@@ -247,7 +254,8 @@ def main(conf):
         
         time_used = (time.time() - start_time) / 60
         print("epoch %d done, cv acc is: %.4f, time_used: %.4f minutes" % (count, acc, time_used))
-        print('loss_best:', loss_best)
+        print('dev loss:', dev_loss, 'loss_best:', loss_best)
+        print('\n')
         #x_axis = range(count)
         #y_axis = [loss_results[0:count], dev_loss_results[0:count], dev_cer_results[0:count]]
         #for x in range(len(viz_window)):

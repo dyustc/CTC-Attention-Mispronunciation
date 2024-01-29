@@ -6,7 +6,7 @@ if [ $# -ne 2 ]; then
 fi
 
 conf_dir=`pwd`/conf
-prepare_dir=`pwd`/data
+prepare_dir=`pwd`/data1
 map_file=$conf_dir/phones.60-48-39.map
 phoneme_map=$2
 
@@ -18,10 +18,10 @@ if [ ! -x $sph2pipe ]; then
 fi
 
 #根据数据库train，test的名称修改，有时候下载下来train可能是大写或者是其他形式
-train_dir=train
-test_dir=test
+train_dir=TRAIN
+test_dir=TEST
 
-ls -d "$1"/*/dr*/* | sed -e "s:^.*/::" > $conf_dir/train_timit_spk.list
+ls -d "$1"/*/DR*/* | sed -e "s:^.*/::" > $conf_dir/train_timit_spk.list
 
 tmpdir=`pwd`/tmp
 mkdir -p $tmpdir $prepare_dir
@@ -31,7 +31,7 @@ for x in train_timit; do
   fi
 
   # 只使用 si & sx 的语音.
-  find $1/{$train_dir,$test_dir}  -iname '*.WAV' \
+  find $1/{$train_dir,$test_dir}  -iname '*.WAV.wav' \
     | grep -f $conf_dir/${x}_spk.list > $tmpdir/${x}_sph.flist
 
   #获得每句话的id标识
@@ -62,9 +62,9 @@ for x in train_timit; do
     cat $tmpdir/${x}.trans | sort > $prepare_dir/$x/${y}_text || exit 1;
     if [ $y == phn ]; then 
         cp $prepare_dir/$x/${y}_text $prepare_dir/$x/${y}_text.tmp
+        python local/normalize_phone.py --map $map_file --to $phoneme_map --src $prepare_dir/$x/${y}_text.tmp --tgt $prepare_dir/$x/transcript_${y}_text
         python local/normalize_phone.py --map $map_file --to $phoneme_map --src $prepare_dir/$x/${y}_text.tmp --tgt $prepare_dir/$x/${y}_text
         rm -f $prepare_dir/$x/${y}_text.tmp
-        cp $prepare_dir/$x/${y}_text $prepare_dir/$x/transcript_${y}_text
     fi
   done
 done

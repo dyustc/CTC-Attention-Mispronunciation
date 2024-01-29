@@ -5,7 +5,7 @@ import textgrid
 import re
 import argparse
 parser = argparse.ArgumentParser(description="Prepare L2 data")
-parser.add_argument("--l2_path",default="/home/ljh/fkq/L2-Arctic",help="l2-Arctic path")
+parser.add_argument("--l2_path",default="/data2/daiyi/dataset/l2arctic",help="l2-Arctic path")
 parser.add_argument("--save_path",default="./data/l2_train",help="l2-Arctic path")
 
 args = parser.parse_args()
@@ -27,7 +27,6 @@ w2 = open(tmp_path+"/wav_sph.scp",'w+')
 w3 = open(tmp_path+"/phn_text",'w+')
 w4 = open(tmp_path+"/transcript_phn_text",'w+')
 
-
 def del_repeat_sil(phn_lst):
     tmp = [phn_lst[0]]
     for i in range(1,len(phn_lst)):
@@ -46,11 +45,15 @@ for phn_path in wav_lst:
     wav_path = re.sub("TextGrid","wav",tmp)
     tmp = re.sub("annotation","transcript",phn_path)
     text_path = re.sub("TextGrid","txt",tmp)
+    can_phn_path = re.sub("annotation", "arpa_textgrid", phn_path)
     if(spk_id in eval(type_[-1]+"_spk") ):
         cur_phns = []
         transcript_phns = []
         tg = textgrid.TextGrid.fromFile(phn_path)
-        for i in tg[1]:
+
+        can_transcript_phns = []
+        can_tg = textgrid.TextGrid.fromFile(can_phn_path)
+        for i in tg[1]:            
             if(i.mark == ''):
                 transcript_phns.append(("sil"))
                 cur_phns.append("sil")
@@ -101,8 +104,32 @@ for phn_path in wav_lst:
                         transcript_phns.append("w")    
                     else:
                         transcript_phns.append(trans_phn.lower())
-                        
-                        
+
+        for i in can_tg[1]:
+            if i.mark == "" or i.mark == None:
+                can_transcript_phns.append("sil")
+            
+            trans_phn = i.mark
+            trans_phn = trans_phn.rstrip(string.digits)
+
+            ## trans phn 
+            if(trans_phn == "sp" or trans_phn == "SIL" or trans_phn == " " or trans_phn == "spn" ):
+                can_transcript_phns.append(("sil"))
+            else:
+                trans_phn = trans_phn.strip(" ")
+                if(trans_phn == "ERR" or trans_phn == "err"):
+                    can_transcript_phns.append("err")
+                elif(trans_phn == "ER)"):
+                    can_transcript_phns.append("er")
+                elif(trans_phn == "AX" or trans_phn == "ax" or trans_phn == "AH)"):
+                    can_transcript_phns.append("ah")
+                elif(trans_phn == "V``"):
+                    can_transcript_phns.append("v")
+                elif(trans_phn == "W`"):
+                    can_transcript_phns.append("w")    
+                else:
+                    can_transcript_phns.append(trans_phn.lower())
+                
         f = open(text_path,'r')
         for line in f:
             w.write(utt_id + " " + line.lower() + "\n")
@@ -110,8 +137,8 @@ for phn_path in wav_lst:
         w2.write(utt_id + " " + wav_path + "\n" )
         w3.write(utt_id + " " + " ".join(del_repeat_sil(cur_phns)) + "\n" )
         w4.write(utt_id + " " + " ".join(del_repeat_sil(transcript_phns)) + "\n" )
-        
-    
+
+
 w.close()
 w1.close()
 w2.close()

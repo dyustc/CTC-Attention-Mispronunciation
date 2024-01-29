@@ -25,16 +25,16 @@ exp_name: 'best_model'
 # exp_name: 'random_0.1_bigbatch'
 # exp_name: 'ctc_fbank_cnn_vowel_consonants_mutation'
 # exp_name: 'norm'
-checkpoint_dir: 'data1.infer/'
+checkpoint_dir: 'data1/'
 
 #Data
-vocab_file: 'data1.infer/units'
-train_scp_path: 'data1.infer/train/fbank.scp'
-train_lab_path: 'data1.infer/train/phn_text'
-train_trans_path: 'data1.infer/train/transcript_phn_text'
-valid_scp_path: 'data1.infer/dev/fbank.scp'
-valid_lab_path: 'data1.infer/dev/phn_text'
-valid_trans_path: 'data1.infer/dev/transcript_phn_text'
+vocab_file: 'data1/units'
+train_scp_path: 'data1/train/fbank.scp'
+train_lab_path: 'data1/train/phn_text'
+train_trans_path: 'data1/train/transcript_phn_text'
+valid_scp_path: 'data1/dev/fbank.scp'
+valid_lab_path: 'data1/dev/phn_text'
+valid_trans_path: 'data1/dev/transcript_phn_text'
 left_ctx: 0
 right_ctx: 2
 n_skip_frame: 2
@@ -79,12 +79,12 @@ seed: 1234
 verbose_step: 50
 
 #[test]
-test_scp_path: 'data1.infer/test/fbank.scp'
-test_lab_path: 'data1.infer/test/phn_text'
-test_trans_path: 'data1.infer/test/transcript_phn_text'
-test_wrd_path: 'data1.infer/test/wrd_text'
+test_scp_path: 'data1/test/fbank.scp'
+test_lab_path: 'data1/test/phn_text'
+test_trans_path: 'data1/test/transcript_phn_text'
+test_wrd_path: 'data1/test/wrd_text'
 decode_type: "Nono"
 beam_width: 10
 lm_alpha: 0
-lm_path: 'data1.infer/lm_phone_bg.arpa'
+lm_path: 'data1/lm_phone_bg.arpa'
 

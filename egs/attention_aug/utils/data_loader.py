@@ -112,7 +112,7 @@ class SpeechDataset(Dataset):
         
         assert len(path_dict) == len(label_dict)
         assert len(path_dict) == len(trans_dict)
-        # print("Reading %d lines from %s" % (len(label_dict), self.lab_path))
+        print("Reading %d lines from %s" % (len(label_dict), self.lab_path))
         
         self.item = []
         for i in range(len(path_dict)):
