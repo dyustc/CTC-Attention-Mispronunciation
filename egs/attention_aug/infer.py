@@ -27,7 +27,7 @@ from steps.train_ctc import Config
 
 
 parser = argparse.ArgumentParser(description="infer with only wav and transcript")
-parser.add_argument('--conf', default="conf/ctc_config.yaml", help='conf file for train and infer')
+parser.add_argument('--conf', default="conf/ctc_config.1.yaml", help='conf file for train and infer')
 parser.add_argument("--wav_transcript_path",default="/data2/daiyi/dataset/TXHC_EXTRA/wav",help="input path")
 
 # could be from other sources
@@ -226,7 +226,7 @@ def print_align_space_canonical_origin(s1, s2, l):
 
     return ' '.join(p_s2), ' '.join(p_s1), ' '.join(l), len(p_s2), d
 
-def infer(word_dict):
+def infer_init():
     try:
         conf = yaml.safe_load(open(args.conf,'r'))
     except:
@@ -254,7 +254,21 @@ def infer(word_dict):
     decoder_type =  opts.decode_type
     
     vocab_file = opts.vocab_file
+    vocab = Vocab(vocab_file)
 
+    model = CTC_Model(rnn_param=rnn_param, add_cnn=add_cnn, cnn_param=cnn_param, num_class=num_class, drop_out=drop_out)
+    model.to(device)
+    model.load_state_dict(package['state_dict'])
+    model.eval()
+
+    if decoder_type == 'Greedy':
+        decoder  = GreedyDecoder(vocab.index2word, space_idx=-1, blank_index=0)
+    else:
+        decoder = BeamDecoder(vocab.index2word, beam_width=beam_width, blank_index=0, space_idx=-1, lm_path=opts.lm_path, lm_alpha=opts.lm_alpha) 
+
+    return opts, device, model, decoder, vocab
+
+def infer_data_init(opts, vocab):
     test_wrd_file = args.wav_transcript_path + "/wrd.txt"
     test_wrd_dict = {}
     with open(test_wrd_file) as f:
@@ -264,8 +278,6 @@ def infer(word_dict):
             i = l.find(' ')
             test_wrd_dict[l[:i]] = l[i+1:]    
     
-    vocab = Vocab(vocab_file)
-
     test_scp_path = args.wav_transcript_path + "/fbank.scp"
     test_trans_path = args.wav_transcript_path + "/transcript_phn.txt"
 
@@ -273,16 +285,9 @@ def infer(word_dict):
     test_dataset = SpeechDataset(vocab, test_scp_path, test_trans_path, test_trans_path, opts)
     test_loader = SpeechDataLoader(test_dataset, batch_size=opts.batch_size, shuffle=False, num_workers=opts.num_workers, pin_memory=False)
     
-    model = CTC_Model(rnn_param=rnn_param, add_cnn=add_cnn, cnn_param=cnn_param, num_class=num_class, drop_out=drop_out)
-    model.to(device)
-    model.load_state_dict(package['state_dict'])
-    model.eval()
+    return test_loader, test_wrd_dict
     
-    if decoder_type == 'Greedy':
-        decoder  = GreedyDecoder(vocab.index2word, space_idx=-1, blank_index=0)
-    else:
-        decoder = BeamDecoder(vocab.index2word, beam_width=beam_width, blank_index=0, space_idx=-1, lm_path=opts.lm_path, lm_alpha=opts.lm_alpha) 
-        
+def infer(word_dict, test_loader, device, model, decoder, vocab, test_wrd_dict):    
     w1 = open(args.wav_transcript_path + "/decode_seq.txt",'w+')
     with torch.no_grad():
         for data in test_loader:
@@ -389,7 +394,7 @@ def infer(word_dict):
     w1.close()
 
 def main():
-    start = time.time()
+    t0 = time.time()
     tmp_path = args.wav_transcript_path
     w = open(tmp_path+"/wrd.txt",'w+')
     w1 = open(tmp_path+"/wav.scp",'w+')
@@ -405,17 +410,18 @@ def main():
     cnt = 0
     g2p = G2p()
     can_transcript_words_dict = dict()
+    opts, device, model, decoder, vocab = infer_init()
     silence_wav_path = './silence.wav'
     denoised_dir = os.path.normpath('/'.join([args.wav_transcript_path, 'denoised']))
     os.makedirs(denoised_dir, exist_ok=True)
     far_data, fs = sf.read(silence_wav_path)
     data_limit = len(far_data)
+    t1 = time.time()
     for p in os.listdir(args.wav_transcript_path):
         if 'denoised' in p:
             continue
 
         ext = p.split('.')[1]
-        utt_id = p.split('.')[0]
         if ext != 'wav':
             continue
         
@@ -439,6 +445,15 @@ def main():
             continue
 
         total_wav_time += len(data) / fs
+
+    t2 = time.time()
+    for p in os.listdir(args.wav_transcript_path):
+        if 'denoised' in p:
+            continue
+        ext = p.split('.')[1]
+        utt_id = p.split('.')[0]
+        if ext != 'wav':
+            continue
 
         tmp2 = re.sub('wav', 'txt', p)
         text_path = os.path.normpath('/'.join([args.wav_transcript_path, tmp2]))                
@@ -507,7 +522,7 @@ def main():
     w.close()
     w1.close()
     w4.close()
-
+    t3 = time.time()
     cmd1 = './bin/compute-fbank-feats --config=conf/fbank.conf scp,p:{}/wav.scp ark:- | '.format(tmp_path)
     cmd2 = './bin/apply-cmvn --norm-vars=true {}/global_fbank_cmvn.txt ark:- ark:- | '.format('data')
     cmd3 = './bin/copy-feats --compress={} ark:- ark,scp:{}/fbank.ark,{}/fbank.scp'.format('false', tmp_path, tmp_path)
@@ -516,15 +531,22 @@ def main():
     # print(cmd)
     # os.system(cmd)
     subprocess.check_output(cmd, shell=True, stderr=subprocess.STDOUT)
-    infer(can_transcript_words_dict)
+    test_loader, test_wrd_dict = infer_data_init(opts, vocab)
+    infer(can_transcript_words_dict, test_loader, device, model, decoder, vocab, test_wrd_dict)
 
     # remove denoise dir
-    shutil.rmtree(denoised_dir) 
+    # shutil.rmtree(denoised_dir) 
     
     end = time.time()
-    time_used = (end - start)
+    time_used = (end - t0)
     rtf = time_used / total_wav_time
+    rtf1 = (t1-t0) / total_wav_time
+    rtf2 = (t2-t1) / total_wav_time
+    rtf3 = (t3-t2) / total_wav_time
+    rtf4 = (end-t3) / total_wav_time
     print("RTF: %.4f, time used for decode %d sentences: %.4f seconds, total wav length: %.4f seconds" % (rtf, cnt, time_used, total_wav_time))
+    print("init model time: %.4f, init phone time: %.4f, denoise time: %.4f, mdd infer time: %.4f" %(rtf1, rtf3, rtf2, rtf4))
+    print("process time: %.4f" % (rtf2 + rtf4))
     return 0
 
 if __name__ == '__main__':
