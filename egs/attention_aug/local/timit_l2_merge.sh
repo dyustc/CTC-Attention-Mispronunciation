@@ -11,5 +11,6 @@ mkdir $new_dir
 for x in phn_text transcript_phn_text wav.scp wav_sph.scp wrd_text ; do
 	cat ${timit_train_dir}/$x   ${l2_dir}/$x  > ${new_dir}/$x
 done
+
 echo "Merge succeeded"
 

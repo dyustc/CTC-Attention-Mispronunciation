@@ -11,9 +11,9 @@ finish=4
 l2arctic_dir="/data2/daiyi/dataset/l2arctic" 
 timit_dir='/data2/daiyi/dataset/Timit/data'
 phoneme_map='60-39'
-feat_dir='data1'                            #dir to save feature
+feat_dir='data3'                            #dir to save feature
 feat_type='fbank'                          #fbank, mfcc, spectrogram
-config_file='conf/ctc_config.1.yaml'
+config_file='conf/ctc_config.3.yaml'
 
 if [ ! -z $1 ]; then
     stage=$1
@@ -37,7 +37,7 @@ if [ $stage -le 0 ] && [ $finish -ge 0 ]; then
     #rm -rf ${feat_dir}/l2_test ${feat_dir}/test_timit
     mv ${feat_dir}/l2_dev ${feat_dir}/dev  
     mv ${feat_dir}/l2_test ${feat_dir}/test
-
+    
     python3 steps/get_model_units.py $feat_dir/train/phn_text
 fi
 if [ $stage -le 1 ] && [ $finish -ge 1 ]; then

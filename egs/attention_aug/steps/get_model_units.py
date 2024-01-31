@@ -22,7 +22,6 @@ with open(train_text, 'r') as fin:
         line = fin.readline()
 
 fwriter = open(units_file, 'w')
+
 for char in units:
     print(char, file=fwriter)
-
-
