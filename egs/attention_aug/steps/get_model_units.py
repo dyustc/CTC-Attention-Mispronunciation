@@ -7,6 +7,7 @@ if len(sys.argv) != 2:
 
 train_text = sys.argv[1]
 units_file = train_text.split('/')[0] + '/units'
+units_file1 = train_text.split('/')[0] + '/dict.phn.txt'
 
 units = {}
 with open(train_text, 'r') as fin:   
@@ -22,7 +23,9 @@ with open(train_text, 'r') as fin:
         line = fin.readline()
 
 fwriter = open(units_file, 'w')
+fwriter1 = open(units_file1, 'w')
 for char in units:
     print(char, file=fwriter)
+    print(char + ' 1', file=fwriter1)
 
 

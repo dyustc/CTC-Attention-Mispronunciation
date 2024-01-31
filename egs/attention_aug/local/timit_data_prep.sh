@@ -6,7 +6,7 @@ if [ $# -ne 2 ]; then
 fi
 
 conf_dir=`pwd`/conf
-prepare_dir=`pwd`/data1
+prepare_dir=`pwd`/data8
 map_file=$conf_dir/phones.60-48-39.map
 phoneme_map=$2
 
@@ -62,8 +62,10 @@ for x in train_timit; do
     cat $tmpdir/${x}.trans | sort > $prepare_dir/$x/${y}_text || exit 1;
     if [ $y == phn ]; then 
         cp $prepare_dir/$x/${y}_text $prepare_dir/$x/${y}_text.tmp
-        python local/normalize_phone.py --map $map_file --to $phoneme_map --src $prepare_dir/$x/${y}_text.tmp --tgt $prepare_dir/$x/transcript_${y}_text
+        # python local/normalize_phone.py --map $map_file --to $phoneme_map --src $prepare_dir/$x/${y}_text.tmp --tgt $prepare_dir/$x/transcript_${y}_text
         python local/normalize_phone.py --map $map_file --to $phoneme_map --src $prepare_dir/$x/${y}_text.tmp --tgt $prepare_dir/$x/${y}_text
+        cp $prepare_dir/$x/${y}_text $prepare_dir/$x/transcript_${y}_text
+        cp $prepare_dir/$x/extra.phn $prepare_dir/$x/extra.ref
         rm -f $prepare_dir/$x/${y}_text.tmp
     fi
   done

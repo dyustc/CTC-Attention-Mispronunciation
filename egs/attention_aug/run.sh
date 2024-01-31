@@ -4,16 +4,16 @@
 ./path.sh
 
 stage=0
-finish=4
+finish=0
 
 
 
 l2arctic_dir="/data2/daiyi/dataset/l2arctic" 
 timit_dir='/data2/daiyi/dataset/Timit/data'
 phoneme_map='60-39'
-feat_dir='data1'                            #dir to save feature
+feat_dir='data8'                            #dir to save feature
 feat_type='fbank'                          #fbank, mfcc, spectrogram
-config_file='conf/ctc_config.1.yaml'
+config_file='conf/ctc_config.8.yaml'
 
 if [ ! -z $1 ]; then
     stage=$1
@@ -37,8 +37,20 @@ if [ $stage -le 0 ] && [ $finish -ge 0 ]; then
     #rm -rf ${feat_dir}/l2_test ${feat_dir}/test_timit
     mv ${feat_dir}/l2_dev ${feat_dir}/dev  
     mv ${feat_dir}/l2_test ${feat_dir}/test
+    
+    mkdir -p ${feat_dir}/out
+    mv ${feat_dir}/dev/extra.tsv ${feat_dir}/out/valid.tsv
+    mv ${feat_dir}/dev/extra.phn ${feat_dir}/out/valid.phn
+    mv ${feat_dir}/dev/extra.ref ${feat_dir}/out/valid.ref
+    mv ${feat_dir}/test/extra.tsv ${feat_dir}/out/test.tsv
+    mv ${feat_dir}/test/extra.phn ${feat_dir}/out/test.phn
+    mv ${feat_dir}/test/extra.ref ${feat_dir}/out/test.ref
+    mv ${feat_dir}/train/extra.tsv ${feat_dir}/out/train.tsv
+    mv ${feat_dir}/train/extra.phn ${feat_dir}/out/train.phn
+    mv ${feat_dir}/train/extra.ref ${feat_dir}/out/train.ref
 
     python3 steps/get_model_units.py $feat_dir/train/phn_text
+    mv ${feat_dir}/dict.phn.txt ${feat_dir}/out
 fi
 if [ $stage -le 1 ] && [ $finish -ge 1 ]; then
     #python3 steps/get_model_units.py $feat_dir/train/phn_text

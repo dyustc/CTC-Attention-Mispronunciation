@@ -4,6 +4,8 @@ import string
 import textgrid
 import re
 import argparse
+import soundfile as sf
+
 parser = argparse.ArgumentParser(description="Prepare L2 data")
 parser.add_argument("--l2_path",default="/data2/daiyi/dataset/l2arctic",help="l2-Arctic path")
 parser.add_argument("--save_path",default="./data/l2_train",help="l2-Arctic path")
@@ -26,6 +28,10 @@ w1 = open(tmp_path+"/wav.scp",'w+')
 w2 = open(tmp_path+"/wav_sph.scp",'w+')
 w3 = open(tmp_path+"/phn_text",'w+')
 w4 = open(tmp_path+"/transcript_phn_text",'w+')
+# for wav2vec2mdd
+w5 = open(tmp_path+'/extra.tsv', 'w+')
+w6 = open(tmp_path+'/extra.phn', 'w+')
+w7 = open(tmp_path+'/extra.ref', 'w+')
 
 def del_repeat_sil(phn_lst):
     tmp = [phn_lst[0]]
@@ -45,7 +51,7 @@ for phn_path in wav_lst:
     wav_path = re.sub("TextGrid","wav",tmp)
     tmp = re.sub("annotation","transcript",phn_path)
     text_path = re.sub("TextGrid","txt",tmp)
-    can_phn_path = re.sub("annotation", "arpa_textgrid", phn_path)
+    can_phn_path = re.sub("annotation", "cmu_textgrid", phn_path)
     if(spk_id in eval(type_[-1]+"_spk") ):
         cur_phns = []
         transcript_phns = []
@@ -136,7 +142,13 @@ for phn_path in wav_lst:
         w1.write(utt_id + " " + wav_path + "\n" )
         w2.write(utt_id + " " + wav_path + "\n" )
         w3.write(utt_id + " " + " ".join(del_repeat_sil(cur_phns)) + "\n" )
-        w4.write(utt_id + " " + " ".join(del_repeat_sil(transcript_phns)) + "\n" )
+        w4.write(utt_id + " " + " ".join(del_repeat_sil(can_transcript_phns)) + "\n" )
+
+        frames = sf.info(wav_path).frames
+        w5.write(wav_path + " " + str(frames) + "\n" )
+        w6.write(" ".join(del_repeat_sil(cur_phns)) + "\n" )
+        w7.write(" ".join(del_repeat_sil(can_transcript_phns)) + "\n" )
+
 
 
 w.close()
@@ -144,3 +156,7 @@ w1.close()
 w2.close()
 w3.close()
 w4.close()
+w5.close()
+w6.close()
+w7.close()
+
