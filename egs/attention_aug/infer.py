@@ -28,7 +28,7 @@ from steps.train_ctc import Config
 
 
 parser = argparse.ArgumentParser(description="infer with only wav and transcript")
-parser.add_argument('--conf', default="conf/ctc_config.3.yaml", help='conf file for train and infer')
+parser.add_argument('--conf', default="conf/ctc_config.1.yaml", help='conf file for train and infer')
 parser.add_argument("--wav_transcript_path",default="/data2/daiyi/dataset/TXHC_EXTRA/wav",help="input path")
 
 # could be from other sources

@@ -76,7 +76,7 @@ class ctcBeamSearch(object):
         '''
         batches, maxT, maxC = inputs.size()
         res = []
-        
+        # print(self.classes)
         for batch in range(batches):
             mat = inputs[batch].numpy()
             # Initialise beam state
@@ -86,6 +86,7 @@ class ctcBeamSearch(object):
             last.entries[y].prBlank=LOG_ONE
             last.entries[y].prTotal=LOG_ONE
             
+            trie_alike_temp = {}
             # go over all time-steps
             for t in range(inputs_list[batch]):
                 curr=BeamState()
@@ -101,7 +102,7 @@ class ctcBeamSearch(object):
                     if len(y)>0:
                         #相同的y两种可能，加入重复或者加入空白,如果之前没有字符，在NonBlank概率为0
                         prNonBlank=last.entries[y].prNonBlank + math.log(mat[t, y[-1]])                    
-                            
+                    trie_alike_temp[y] = {'total' : math.exp(last.entries[y].prTotal), 'nonBlank' : math.exp(last.entries[y].prNonBlank)}      
                     # calc probabilities
                     prBlank = (last.entries[y].prTotal) + math.log(mat[t, self.blank_index])
                     # save result
@@ -148,7 +149,25 @@ class ctcBeamSearch(object):
             bestLabelling=last.sort()[0] # get most probable labelling
             
             # map labels to chars
-            res_b =' '.join([self.classes[l] for l in bestLabelling])
+            temp = [self.classes[l] for l in bestLabelling]
+            res_b =' '.join(temp)
+
+            l1 = len(bestLabelling)
+            p_total = []
+            p_nonblank = []
+            last1 = 1
+            last2 = 1
+            for i in range(l1):
+                p_total.append(trie_alike_temp[bestLabelling[0:i+1]]['total'] / last1 )
+                p_nonblank.append(trie_alike_temp[bestLabelling[0:i+1]]['nonBlank'] / last2)
+                last1 = trie_alike_temp[bestLabelling[0:i+1]]['total']
+                last2 = trie_alike_temp[bestLabelling[0:i+1]]['nonBlank']
+            p_total = [round(e, 2) if e < 1 else 1 for e in p_total]
+            p_nonblank = [round(e, 2) if e < 1 else 1 for e in p_nonblank]
+
+            # for i in range(len(p_total)):
+            #     print(temp[i], p_total[i], p_nonblank[i])
+
             res.append(res_b)
         return res
 
