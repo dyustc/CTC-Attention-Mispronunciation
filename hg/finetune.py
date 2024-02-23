@@ -6,6 +6,7 @@ from transformers import get_scheduler
 import torch
 from torch.utils.data import DataLoader
 from torch.optim import AdamW
+import evaluate
 
 from tqdm.auto import tqdm
 
@@ -30,12 +31,13 @@ eval_dataloader = DataLoader(small_eval_dataset, batch_size=8)
 
 
 model = AutoModelForSequenceClassification.from_pretrained("bert-base-cased", num_labels=5)
-
+# store
+torch.save(model.state_dict(), 'pretrained.pt')
 
 optimizer = AdamW(model.parameters(), lr=5e-5)
 
 
-num_epochs = 3
+num_epochs = 5
 num_training_steps = num_epochs * len(train_dataloader)
 print(num_training_steps)
 lr_scheduler = get_scheduler(
@@ -47,7 +49,7 @@ lr_scheduler = get_scheduler(
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 model.to(device)
 print(device)
-exit()
+# exit()
 
 
 
@@ -65,4 +67,38 @@ for epoch in range(num_epochs):
         lr_scheduler.step()
         optimizer.zero_grad()
         progress_bar.update(1)
+
+#store
+torch.save(model.state_dict(), 'trained-5.pt')
+
+metric = evaluate.load("accuracy")
+model.eval()
+for batch in eval_dataloader:
+    batch = {k: v.to(device) for k, v in batch.items()}
+    with torch.no_grad():
+        outputs = model(**batch)
+
+    logits = outputs.logits
+    predictions = torch.argmax(logits, dim=-1)
+    metric.add_batch(predictions=predictions, references=batch["labels"])
+
+result = metric.compute()
+print('after', result)
+
+torch.cuda.empty_cache()
+# load best model weights
+model.load_state_dict(torch.load('trained-3.pt'))  
+model.eval()
+metric1 = evaluate.load("accuracy")
+for batch in eval_dataloader:
+    batch = {k: v.to(device) for k, v in batch.items()}
+    with torch.no_grad():
+        outputs = model(**batch)
+
+    logits = outputs.logits
+    predictions = torch.argmax(logits, dim=-1)
+    metric1.add_batch(predictions=predictions, references=batch["labels"])
+
+result = metric1.compute()
+print('before', result)
 
