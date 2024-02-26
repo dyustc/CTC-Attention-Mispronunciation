@@ -1,8 +1,9 @@
 from datasets import load_dataset
+
 from transformers import AutoTokenizer
 from transformers import AutoModelForSequenceClassification
-from transformers import get_scheduler
 
+from transformers import get_scheduler
 import torch
 from torch.utils.data import DataLoader
 from torch.optim import AdamW
@@ -23,8 +24,7 @@ tokenized_datasets.set_format("torch")
 
 small_train_dataset = tokenized_datasets["train"].shuffle(seed=42).select(range(1000))
 small_eval_dataset = tokenized_datasets["test"].shuffle(seed=42).select(range(1000))
-
-
+print(small_train_dataset[0])
 
 train_dataloader = DataLoader(small_train_dataset, shuffle=True, batch_size=8)
 eval_dataloader = DataLoader(small_eval_dataset, batch_size=8)
@@ -34,24 +34,26 @@ model = AutoModelForSequenceClassification.from_pretrained("bert-base-cased", nu
 # store
 torch.save(model.state_dict(), 'pretrained.pt')
 
+
 optimizer = AdamW(model.parameters(), lr=5e-5)
 
-
-num_epochs = 5
+num_epochs = 3
 num_training_steps = num_epochs * len(train_dataloader)
 print(num_training_steps)
 lr_scheduler = get_scheduler(
     name="linear", optimizer=optimizer, num_warmup_steps=0, num_training_steps=num_training_steps
 )
 
+if torch.cuda.is_available():
+    device = torch.device("cuda")
+elif torch.backends.mps.is_available():
+    device = torch.device("mps")
+else:
+    device = torch.device("cpu")
 
-
-device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 model.to(device)
 print(device)
-# exit()
-
-
+exit()
 
 progress_bar = tqdm(range(num_training_steps))
 
@@ -69,7 +71,7 @@ for epoch in range(num_epochs):
         progress_bar.update(1)
 
 #store
-torch.save(model.state_dict(), 'trained-5.pt')
+torch.save(model.state_dict(), 'trained-3.pt')
 
 metric = evaluate.load("accuracy")
 model.eval()
@@ -85,20 +87,20 @@ for batch in eval_dataloader:
 result = metric.compute()
 print('after', result)
 
-torch.cuda.empty_cache()
-# load best model weights
-model.load_state_dict(torch.load('trained-3.pt'))  
-model.eval()
-metric1 = evaluate.load("accuracy")
-for batch in eval_dataloader:
-    batch = {k: v.to(device) for k, v in batch.items()}
-    with torch.no_grad():
-        outputs = model(**batch)
+# torch.cuda.empty_cache()
+# # load best model weights
+# model.load_state_dict(torch.load('trained-3.pt'))  
+# model.eval()
+# metric1 = evaluate.load("accuracy")
+# for batch in eval_dataloader:
+#     batch = {k: v.to(device) for k, v in batch.items()}
+#     with torch.no_grad():
+#         outputs = model(**batch)
 
-    logits = outputs.logits
-    predictions = torch.argmax(logits, dim=-1)
-    metric1.add_batch(predictions=predictions, references=batch["labels"])
+#     logits = outputs.logits
+#     predictions = torch.argmax(logits, dim=-1)
+#     metric1.add_batch(predictions=predictions, references=batch["labels"])
 
-result = metric1.compute()
-print('before', result)
+# result = metric1.compute()
+# print('before', result)
 
