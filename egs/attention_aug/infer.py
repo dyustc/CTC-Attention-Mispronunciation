@@ -28,12 +28,13 @@ from steps.train_ctc import Config
 
 
 parser = argparse.ArgumentParser(description="infer with only wav and transcript")
-parser.add_argument('--conf', default="conf/ctc_config.3.yaml", help='conf file for train and infer')
+parser.add_argument('--conf', default="conf/ctc_config.1.yaml", help='conf file for train and infer')
 parser.add_argument("--wav_transcript_path",default="/data2/daiyi/dataset/TXHC_EXTRA/wav",help="input path")
 
 # could be from other sources
 parser.add_argument("--no_g2p_en", action="store_true", help="use phoneme from g2p_en, must have a source of phones, e.g, textgrid")
-parser.add_argument("--textgrid_path",default="/data2/daiyi/dataset/TXHC_EXTRA/cmu_aligned",help="input textgrid path")
+parser.add_argument("--textgrid_path", default="/data2/daiyi/dataset/TXHC_EXTRA/cmu_aligned",help="input textgrid path")
+parser.add_argument("--vocabulary", action="store_true", help="works for vocabulary, use IPA syllables")
 
 args = parser.parse_args()
 
@@ -78,6 +79,11 @@ g_pairs = {
         'z'  : 's',
     }
 }
+
+ipa_symbols = {"a": "ə", "ey": "eɪ", "aa": "ɑ", "ae": "æ", "ah": "ə", "ao": "ɔ",
+           "aw": "aʊ", "ay": "aɪ", "ch": "ʧ", "dh": "ð", "eh": "ɛ", "er": "ər",
+           "hh": "h", "ih": "ɪ", "jh": "ʤ", "ng": "ŋ",  "ow": "oʊ", "oy": "ɔɪ",
+           "sh": "ʃ", "th": "θ", "uh": "ʊ", "uw": "u", "zh": "ʒ", "iy": "i", "y": "j"}
 
 def mild1(s1, s2, s3, level = 1):
     pairs = dict()
@@ -257,6 +263,15 @@ def infer_init():
     
     vocab_file = opts.vocab_file
     vocab = Vocab(vocab_file)
+    # ipa verify
+    # for p in vocab.word2index:
+    #     if p not in ipa_symbols.keys():
+    #         print(p, p)
+    # print('-------')
+    # for p in vocab.word2index:
+    #     if p in ipa_symbols.keys():
+    #         print(p, ipa_symbols[p])
+
 
     model = CTC_Model(rnn_param=rnn_param, add_cnn=add_cnn, cnn_param=cnn_param, num_class=num_class, drop_out=drop_out)
     model.to(device)
@@ -289,8 +304,12 @@ def infer_data_init(opts, vocab):
     
     return test_loader, test_wrd_dict
     
-def infer(word_dict, test_loader, device, model, decoder, vocab, test_wrd_dict):    
+def infer(word_dict, test_loader, device, model, decoder, vocab, test_wrd_dict, use_ipa = False):    
     w1 = open(args.wav_transcript_path + "/decode_seq.txt",'w+')
+    if use_ipa:
+        display_threshold = 0.0
+    else:
+        display_threshold = 0.4
     with torch.no_grad():
         for data in test_loader:
             inputs, input_sizes, _, _, trans, trans_sizes, utt_list = data
@@ -336,12 +355,22 @@ def infer(word_dict, test_loader, device, model, decoder, vocab, test_wrd_dict):
                 # print(canonicals_nosil[x], len(canonicals_nosil[x].split(' ')))
                 # print(decoded_nosil[x], len(decoded_nosil[x].split(' ')))
                 # complete_score1 = sum([1 if c == 'D' or c == 'S' else 0 for c in dc_path])
+                if use_ipa:
+                    ipa_decoded = [c for c in decoded_nosil[x].split(' ') if c]
+                    ipa_decoded = [ipa_symbols.get(c, c) for c in ipa_decoded]
+                    decoded_nosil[x] = ' '.join(ipa_decoded)
+
+                    ipa_canonicals = [c for c in canonicals_nosil[x].split(' ') if c]
+                    ipa_canonicals = [ipa_symbols.get(c, c) for c in ipa_canonicals]
+                    canonicals_nosil[x] = ' '.join(ipa_canonicals)
+
                 tmp1, tmp2, tmp3, canonical_len2, d2 = print_align_space_canonical_origin(decoded_nosil[x], canonicals_nosil[x], dc_path)
                 # print(tmp1, len([c for c in tmp1.split(' ') if c]))
                 # print(tmp3, len([c for c in tmp3.split(' ') if c]))
                 # print(tmp2, len([c for c in tmp2.split(' ') if c]))
                 tmp1, tmp3, tmp2 = mild2(tmp1, tmp3, tmp2)
-                tmp1, tmp3, tmp2 = mild1(tmp1, tmp3, tmp2, level = 1)
+                if not use_ipa:
+                    tmp1, tmp3, tmp2 = mild1(tmp1, tmp3, tmp2, level = 1)
 
                 c_path = [c for c in canonicals_nosil[x].split(' ') if c]
                 dc_path = [c for c in tmp3.split(' ') if c]
@@ -356,7 +385,7 @@ def infer(word_dict, test_loader, device, model, decoder, vocab, test_wrd_dict):
                 formatted_text = []
                 insertion_cnt = 0
                 # print(len(dc_path), repeatted_words_list[-1][-1]+1, len(canonicals_nosil[x].split(" ")))
-                # TODO: Due to mismatch problem
+                # TODO: Due to mismatch problem, should be a err code return
                 insertion_cnt_preview = sum([e == 'I' for e in dc_path])
                 if len(dc_path)-insertion_cnt_preview < repeatted_words_list[-1][-1]+1:
                     continue
@@ -367,7 +396,6 @@ def infer(word_dict, test_loader, device, model, decoder, vocab, test_wrd_dict):
                     is_word_added = False
                     total_phones = end - start + 1
                     sd_cnt = 0
-                    display_threshold = 0.4
                     while k <= end + insertion_cnt:
                         if dc_path[k] == 'S' or dc_path[k] == 'D':
                             sd_cnt += 1
@@ -405,6 +433,7 @@ def main():
 
     t0 = time.time()
     tmp_path = args.wav_transcript_path
+    use_ipa = args.vocabulary
     w = open(tmp_path+"/wrd.txt",'w+')
     w1 = open(tmp_path+"/wav.scp",'w+')
     w4 = open(tmp_path+"/transcript_phn.txt",'w+')
@@ -479,6 +508,7 @@ def main():
         with open(text_path,'r') as f:
             index = 0
             for utterance in f.readlines():
+                utterance = re.sub(r'[^\w\s]', '', utterance)
                 w.write(utt_id + " " + utterance + "\n")
                 words = utterance.split(" ")
                 l3_g2pen = []
@@ -541,10 +571,17 @@ def main():
     # os.system(cmd)
     subprocess.check_output(cmd, shell=True, stderr=subprocess.STDOUT)
     test_loader, test_wrd_dict = infer_data_init(opts, vocab)
-    infer(can_transcript_words_dict, test_loader, device, model, decoder, vocab, test_wrd_dict)
+    infer(can_transcript_words_dict, test_loader, device, model, decoder, vocab, test_wrd_dict, use_ipa)
 
     # remove denoise dir
-    shutil.rmtree(denoised_dir) 
+    shutil.rmtree(denoised_dir)
+    os.remove(tmp_path+"/wrd.txt")
+    os.remove(tmp_path+"/wav.scp")
+    os.remove(tmp_path+"/transcript_phn.txt")
+    os.remove(tmp_path+"/decode_seq.txt")
+    os.remove(tmp_path+"/fbank.scp")
+    os.remove(tmp_path+"/fbank.ark")
+
     
     end = time.time()
     time_used = (end - t0)
