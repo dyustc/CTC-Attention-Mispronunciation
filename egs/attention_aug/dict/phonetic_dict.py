@@ -8,52 +8,55 @@ import sys
 class Phonetic(object):
     def __init__(self) -> None:
         self.cmu_to_ipa_wiki = {
-    "AA" : 'a',
-    'AE' : 'æ',
-    'AH0' : 'ə',
-    'AH'  : 'ʌ',
-    'AO' : 'ɔ',
-    'AW' : 'aʊ',
-    'AY' : 'aɪ',
-    'EH' : 'ɛ',
-    # TODO: Suprasegmentals in wiki: https://en.wikipedia.org/wiki/International_Phonetic_Alphabet#Pitch_and_tone
-    'ER' : 'ɜ',
-    'EY' : 'eɪ',
-    'IH' : 'ɪ',
-    'IY' : 'i',
-    'OW' : 'oʊ',
-    'OY' : 'ɔɪ',
-    'UH' : 'ʊ',
-    'UW' : 'u',
-    'B' : 'b',
-    'CH' : 'tʃ',
-    'D' : 'd',
-    'DH' : 'ð',
-    'F' : 'f',
-    'G' : 'g',
-    'HH' : 'h',
-    'JH' : 'dʒ',
-    'K' : 'k',
-    'L' : 'l',
-    'M' : 'm',
-    'N' : 'n',
-    'NG' : 'ŋ',
-    'P' : 'p',
-    'R' : 'r',
-    'S' : 's',
-    'SH' : 'ʃ',
-    'T' : 't',
-    'TH' : 'θ',
-    'V' : 'v',
-    'W' : 'w',
-    'Y' : 'j',
-    'Z' : 'z',
-    'ZH' : 'ʒ'
-}
-        self.cmu_to_ipa = {"a": "ə", "ey": "eɪ", "aa": "ɑ", "ae": "æ", "ah": "ə", "ao": "ɔ",
-           "aw": "aʊ", "ay": "aɪ", "ch": "ʧ", "dh": "ð", "eh": "ɛ", "er": "ər",
-           "hh": "h", "ih": "ɪ", "jh": "ʤ", "ng": "ŋ",  "ow": "oʊ", "oy": "ɔɪ",
-           "sh": "ʃ", "th": "θ", "uh": "ʊ", "uw": "u", "zh": "ʒ", "iy": "i", "y": "j"}
+            "AA" : 'a',
+            'AE' : 'æ',
+            'AH0' : 'ə',
+            'AH'  : 'ʌ',
+            'AO' : 'ɔ',
+            'AW' : 'aʊ',
+            'AY' : 'aɪ',
+            'EH' : 'ɛ',
+            # TODO: Suprasegmentals in wiki: https://en.wikipedia.org/wiki/International_Phonetic_Alphabet#Pitch_and_tone
+            'ER' : 'ɜ',
+            'EY' : 'eɪ',
+            'IH' : 'ɪ',
+            'IY' : 'i',
+            'OW' : 'oʊ',
+            'OY' : 'ɔɪ',
+            'UH' : 'ʊ',
+            'UW' : 'u',
+            'B' : 'b',
+            'CH' : 'tʃ',
+            'D' : 'd',
+            'DH' : 'ð',
+            'F' : 'f',
+            'G' : 'g',
+            'HH' : 'h',
+            'JH' : 'dʒ',
+            'K' : 'k',
+            'L' : 'l',
+            'M' : 'm',
+            'N' : 'n',
+            'NG' : 'ŋ',
+            'P' : 'p',
+            'R' : 'r',
+            'S' : 's',
+            'SH' : 'ʃ',
+            'T' : 't',
+            'TH' : 'θ',
+            'V' : 'v',
+            'W' : 'w',
+            'Y' : 'j',
+            'Z' : 'z',
+            'ZH' : 'ʒ'
+        }
+
+        self.cmu_to_ipa = {
+            "a": "ə", "ey": "eɪ", "aa": "ɑ", "ae": "æ", "ah": "ə", "ao": "ɔ",
+            "aw": "aʊ", "ay": "aɪ", "ch": "ʧ", "dh": "ð", "eh": "ɛ", "er": "ər",
+            "hh": "h", "ih": "ɪ", "jh": "ʤ", "ng": "ŋ",  "ow": "oʊ", "oy": "ɔɪ",
+            "sh": "ʃ", "th": "θ", "uh": "ʊ", "uw": "u", "zh": "ʒ", "iy": "i", "y": "j"
+        }
         
         self.ipa_to_cmu_wiki = {}
 
@@ -63,12 +66,14 @@ class Phonetic(object):
         self.cmu_phones = list(self.cmu_to_ipa_wiki.keys())
         self.cmu_phones.remove('AH0')
 
-        self.cmu_vowel_phones = ['AA', 'AE', 'AH', 'AO', 'AW', 'AY', 'EH', 'ER', 'EY', 'IH', 
-                    'IY', 'OW', 'OY', 'UH', 'UW']
+        self.cmu_vowel_phones = [
+            'AA', 'AE', 'AH', 'AO', 'AW', 'AY', 'EH', 
+            'ER', 'EY', 'IH', 'IY', 'OW', 'OY', 'UH', 'UW']
 
-        self.cmu_consonant_phones = ['B', 'CH', 'D', 'DH', 'F', 'G', 'HH', 'JH', 'K', 'L', 'M', 
-                        'N', 'NG', 'P', 'R', 'S', 'SH', 'T', 'TH', 'V', 'W', 'Y', 
-                        'Z', 'ZH']
+        self.cmu_consonant_phones = [
+            'B', 'CH', 'D', 'DH', 'F', 'G', 'HH', 'JH', 'K', 'L', 'M', 
+            'N', 'NG', 'P', 'R', 'S', 'SH', 'T', 'TH', 'V', 'W', 'Y', 
+            'Z', 'ZH']
 
         self.ipa_vowel_phones = []
 
@@ -127,7 +132,7 @@ class Phonetic(object):
             if p1 != p2:
                 print(phone, p1, p2)
     
-    def ipa_dict(self, word, normalized = True, to_phones = False, take_first = True):
+    def ipa_dict(self, word, normalized = True, to_phones = False, take_first = True) -> str:
         self.load_cmudict_ipa()
         phonetics = self.cmudict_ipa.get(word, None)
         
@@ -145,7 +150,7 @@ class Phonetic(object):
         else:
             return self.phonemizer(word, to_phones, normalized)
 
-    def plain_dict(self, word, to_ipa = True, stress = True, take_first = True):
+    def plain_dict(self, word, to_ipa = True, stress = True, take_first = True) -> str:
         self.load_cmudict_plain()
         phones = self.cmudict_plain.get(word, None)
         
@@ -272,7 +277,7 @@ class Phonetic(object):
 
         return phones
 
-    def phonemizer(self, word, to_phones = False, normalized = True):
+    def phonemizer(self, word, to_phones = False, normalized = True) -> str:
         phonetic = self.backend.phonemize([word])[0]
         phonetic = phonetic.strip()
 
@@ -283,7 +288,7 @@ class Phonetic(object):
         if normalized:
             return self._ipa_phonemizer_normalized(phonetic)
 
-    def g2p_ex(self, word, to_ipa = True, stress = True):
+    def g2p_ex(self, word, to_ipa = True, stress = True) -> str:
         phones = self.g2p(word)
         
         if to_ipa:
@@ -296,20 +301,21 @@ def main():
     phonetic = Phonetic()
 
     # word
-    words1 = ["about", "through", "rough", "cough", "content", "ought", "magazine", "hurt", "but", "accept", "2", "talked", "bananas", "wishes", "OPPO"]
-    words2 = ['suburban', 'kit', 'odd', 'outstanding', 'geology', 'ZZ', 'dashing', "good", 'longtimenosee']
+    words0 = ["2"]
+    words1 = ["about", "through", "rough", "cough", "content", "ought", "magazine", "hurt", "but", "accept", "talked", "bananas", "wishes", "OPPO"]
+    words2 = ['suburban', 'kit', 'odd', 'outstanding', 'geology', 'ZZ', 'dashing', "good", 'longtimenosee', 'phoneme']
 
-    words = words1 + words2
+    words = words0 + words1 + words2
     for word in words:
         # s1 = phonetic.ipa_dict(word)
         # s4 = phonetic.plain_dict(word)
         s2 = phonetic.phonemizer(word)
-        s3 = phonetic.g2p_ex(word)
-        # s2_1 = phonetic.phonemizer(word, True)
+        s2_1 = phonetic.phonemizer(word, True)
+        # s3 = phonetic.g2p_ex(word)
         # s3_1 = phonetic.g2p_ex(word, False)
         
     
-        print(word, s2, s3)
+        print(word, s2, s2_1)
         # print(s2_1)
         # print(s3_1)
         # print(word, s1, s2, s3, s4, s1 == s2)
