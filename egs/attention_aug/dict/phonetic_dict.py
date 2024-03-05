@@ -4,6 +4,7 @@ from phonemizer import phonemize
 from phonemizer.backend import EspeakBackend
 from typing import List
 import sys
+import csv
 
 class Phonetic(object):
     def __init__(self) -> None:
@@ -88,6 +89,7 @@ class Phonetic(object):
         
         self.cmudict_ipa = {}
         self.cmudict_plain = {}
+        self.letter_ipa_dict = {}
 
         self.g2p = G2p()
         self.backend = EspeakBackend('en-us', with_stress = True)
@@ -121,6 +123,26 @@ class Phonetic(object):
         
         return
 
+    def load_letter_ipa_dict(self, reload = False) -> None:
+        if self.letter_ipa_dict.__len__() == 0 or reload:
+            with open('./phonics_engine.csv', newline='') as csvfile:
+                spamreader = csv.reader(csvfile, delimiter='\t', quotechar='|')
+                for row in spamreader:
+                    word = row[0]
+                    phonetic = row[2].replace('.', '')
+                    mapping_string = row[3]
+                    parts = mapping_string.split(',')
+                    mapping = []
+                    for p in parts:
+                        subparts = p.split('-')
+                        mapping.append(tuple(subparts))
+                
+                    self.letter_ipa_dict[word] = {
+                        'phonetic' : phonetic,
+                        'mapping' : mapping
+                    }
+        return
+                
     def check_phone_map(self) -> None:
         for phone in self.cmu_phones:
             if phone not in self.cmu_to_ipa_wiki:
@@ -141,12 +163,17 @@ class Phonetic(object):
         
         if phonetics:
             phonetic = phonetics[index]
-        
+            
+            phonetic = phonetic.replace('ɝ', 'ɜ')
+            phonetic = phonetic.replace('ˌ', '')
+
+            if to_phones:
+                # FIXME: stress position if different from phonemizer
+                phones = self._ipa_to_phones39(phonetic)
+                return " ".join(phones)
+
             if normalized:
-                phonetic = phonetic.replace('ɝ', 'ɜ')
-                phonetic = phonetic.replace('ˌ', '')
-        
-            return phonetic
+                return phonetic
         else:
             return self.phonemizer(word, to_phones, normalized)
 
@@ -299,6 +326,7 @@ class Phonetic(object):
 
 def main():
     phonetic = Phonetic()
+    phonetic.load_letter_ipa_dict()
 
     # word
     words0 = ["2"]
@@ -306,20 +334,22 @@ def main():
     words2 = ['suburban', 'kit', 'odd', 'outstanding', 'geology', 'ZZ', 'dashing', "good", 'longtimenosee', 'phoneme']
 
     words = words0 + words1 + words2
+    # words = ['about']
     for word in words:
-        # s1 = phonetic.ipa_dict(word)
-        # s4 = phonetic.plain_dict(word)
+        s1 = phonetic.ipa_dict(word)
+        s1_1 = phonetic.ipa_dict(word, True, True)
+        s4 = phonetic.plain_dict(word)
         s2 = phonetic.phonemizer(word)
         s2_1 = phonetic.phonemizer(word, True)
-        # s3 = phonetic.g2p_ex(word)
-        # s3_1 = phonetic.g2p_ex(word, False)
+        s3 = phonetic.g2p_ex(word)
+        s3_1 = phonetic.g2p_ex(word, False)
         
     
-        print(word, s2, s2_1)
+        print(word, s2, s3)
+        # print(s1_1)
         # print(s2_1)
         # print(s3_1)
         # print(word, s1, s2, s3, s4, s1 == s2)
-
 
 if __name__ == '__main__':
     sys.exit(main())
