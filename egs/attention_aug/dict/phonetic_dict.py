@@ -324,6 +324,26 @@ class Phonetic(object):
         else:
             return " ".join(phones)
 
+    def phonemizer_sentence(self, text, to_phones = False, normalized = True) -> str:
+        phonetic = self.backend.phonemize([text])[0]
+        phonetic = phonetic.strip()
+        
+        if to_phones:
+            phonetics = phonetic.split(' ')
+            phones = [self._ipa_to_phones39(p) for p in phonetics]
+            full_phones = list()
+            for p in phones:
+                # TODO: better formatting
+                full_phones = full_phones + p + [" "]
+            return " ".join(full_phones)
+
+        if normalized:
+            phonetics = [self._ipa_phonemizer_normalized(p) for p in phonetic.split(' ')]
+            return ' '.join(phonetics)
+
+    def g2p_ex_sentence(self, text, to_phones = False, normalized = True) -> str:
+        pass
+
 def main():
     phonetic = Phonetic()
     phonetic.load_letter_ipa_dict()
@@ -344,29 +364,33 @@ def main():
         s3 = phonetic.g2p_ex(word)
         s3_1 = phonetic.g2p_ex(word, False)
         
-    
         print(word, s2, s3)
         # print(s1_1)
         # print(s2_1)
         # print(s3_1)
         # print(word, s1, s2, s3, s4, s1 == s2)
 
+    #sentence
+    texts = [
+        "I refuse to collect the refuse around here.", # homograph
+        "I'm an activationist.",
+        "The apple of my eye at 7 am run off.",
+        # "I have $250 in my pocket.", # number -> spell-out
+        # "popular pets, e.g. cats and dogs", # e.g. -> for example
+        # "the",
+        # "am"
+    ] # newly coined word
+    for sentence in texts:
+        print(sentence)
+        print(phonetic.phonemizer_sentence(sentence))
+        print(phonetic.phonemizer_sentence(sentence, True, False))
+        print(phonetic.g2p_ex(sentence, False))
+        print("")
+        # print(phonetic.g2p_ex(sentence, False))
+    
 if __name__ == '__main__':
     sys.exit(main())
 
-    
-# sentence
-# texts = ["I have $250 in my pocket.", # number -> spell-out
-#          "popular pets, e.g. cats and dogs", # e.g. -> for example
-#          "I refuse to collect the refuse around here.", # homograph
-#          "I'm an activationist.",
-#          "The apple of my eye at 7 am run off."
-#          ] # newly coined word
-# for sentence in texts:
-#     print(sentence)
-#     print(use_g2p_en(sentence))
-#     print(use_phonemizer(sentence))
-    
 
 # from g2p import make_g2p
 # transducer = make_g2p('dan', 'eng-arpabet')
