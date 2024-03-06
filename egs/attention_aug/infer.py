@@ -25,16 +25,35 @@ from models.model_ctc import *
 from utils.ctcDecoder import GreedyDecoder, BeamDecoder
 from utils.data_loader import Vocab, SpeechDataset, SpeechDataLoader
 from steps.train_ctc import Config
-
+from dict.phonetic_dict import Phonetic
 
 parser = argparse.ArgumentParser(description="infer with only wav and transcript")
-parser.add_argument('--conf', default="conf/ctc_config.1.yaml", help='conf file for train and infer')
-parser.add_argument("--wav_transcript_path",default="/data2/daiyi/dataset/TXHC_EXTRA/wav",help="input path")
+
+parser.add_argument('--conf', 
+                    default="conf/ctc_config.1.yaml", 
+                    help='configure file for train and infer')
+
+parser.add_argument("--wav_transcript_path",
+                    default="/data2/daiyi/dataset/TXHC_EXTRA/wav",
+                    help="path of input wav files")
 
 # could be from other sources
-parser.add_argument("--no_g2p_en", action="store_true", help="use phoneme from g2p_en, must have a source of phones, e.g, textgrid")
-parser.add_argument("--textgrid_path", default="/data2/daiyi/dataset/TXHC_EXTRA/cmu_aligned",help="input textgrid path")
-parser.add_argument("--vocabulary", action="store_true", help="works for vocabulary, use IPA syllables")
+parser.add_argument("-p", "--phonetic", 
+                    dest="phonetic", 
+                    default="phonemizer", 
+                    choices=['g2p', 'phonemizer', 'transcript'], 
+                    help="the phonetics generated should come one of the above list, default phonemizer"
+                    )
+
+parser.add_argument("-f", "--format",
+                    dest="phonetic_format", 
+                    default="ipa",
+                    choices=['cmu', 'ipa'],
+                    help="phonetic format, default ipa"
+                    )
+
+parser.add_argument("--textgrid_path", 
+                    help="input textgrid path, needed if phonetic value is 'transcript'")
 
 args = parser.parse_args()
 
@@ -79,11 +98,6 @@ g_pairs = {
         'z'  : 's',
     }
 }
-
-ipa_symbols = {"a": "ə", "ey": "eɪ", "aa": "ɑ", "ae": "æ", "ah": "ə", "ao": "ɔ",
-           "aw": "aʊ", "ay": "aɪ", "ch": "ʧ", "dh": "ð", "eh": "ɛ", "er": "ər",
-           "hh": "h", "ih": "ɪ", "jh": "ʤ", "ng": "ŋ",  "ow": "oʊ", "oy": "ɔɪ",
-           "sh": "ʃ", "th": "θ", "uh": "ʊ", "uw": "u", "zh": "ʒ", "iy": "i", "y": "j"}
 
 def mild1(s1, s2, s3, level = 1):
     pairs = dict()
@@ -287,13 +301,13 @@ def infer_init():
 
 def infer_data_init(opts, vocab):
     test_wrd_file = args.wav_transcript_path + "/wrd.txt"
-    test_wrd_dict = {}
+    test_transcipt_dict = {}
     with open(test_wrd_file) as f:
         for l in f.readlines():
             # TODO: only support one-line and no repeating words in a sequence
             l = l.strip("\n")
             i = l.find(' ')
-            test_wrd_dict[l[:i]] = l[i+1:]    
+            test_transcipt_dict[l[:i]] = l[i+1:]    
     
     test_scp_path = args.wav_transcript_path + "/fbank.scp"
     test_trans_path = args.wav_transcript_path + "/transcript_phn.txt"
@@ -302,14 +316,11 @@ def infer_data_init(opts, vocab):
     test_dataset = SpeechDataset(vocab, test_scp_path, test_trans_path, test_trans_path, opts)
     test_loader = SpeechDataLoader(test_dataset, batch_size=opts.batch_size, shuffle=False, num_workers=opts.num_workers, pin_memory=False)
     
-    return test_loader, test_wrd_dict
+    return test_loader, test_transcipt_dict
     
-def infer(word_dict, test_loader, device, model, decoder, vocab, test_wrd_dict, use_ipa = False):    
+def infer(phonetic, word_dict, test_loader, device, model, decoder, vocab, test_transcipt_dict, use_ipa):    
     w1 = open(args.wav_transcript_path + "/decode_seq.txt",'w+')
-    if use_ipa:
-        display_threshold = 0.0
-    else:
-        display_threshold = 0.4
+    
     with torch.no_grad():
         for data in test_loader:
             inputs, input_sizes, _, _, trans, trans_sizes, utt_list = data
@@ -328,7 +339,7 @@ def infer(word_dict, test_loader, device, model, decoder, vocab, test_wrd_dict, 
 
             canonicals = []
             for i in range(len(trans)):
-                canonical = [ vocab.index2word[num] for num in trans[i][:trans_sizes[i]]]
+                canonical = [vocab.index2word[num] for num in trans[i][:trans_sizes[i]]]
                 canonicals.append(' '.join(canonical))
                 
             ## compute with out sil     
@@ -343,89 +354,107 @@ def infer(word_dict, test_loader, device, model, decoder, vocab, test_wrd_dict, 
 
                 decoded_nosil.append(' '.join(hyp_precess))
                 canonicals_nosil.append(' '.join(c_ref_precess))
-    
+
             for x in range(len(decoded_nosil)):
-                w1.write(utt_list[x] + " " + decoded_nosil[x] + "\n")    
-            
-            for x in range(len(decoded_nosil)):
-                utterance = test_wrd_dict[utt_list[x]]
+                utterance = test_transcipt_dict[utt_list[x]]
                 decoded_nosil[x] = decoded_nosil[x].replace('err', '')
                 decoded_nosil[x] = decoded_nosil[x].replace('  ', ' ')
                 _, dc_path = decoder.wer(decoded_nosil[x], canonicals_nosil[x])
-                # print(canonicals_nosil[x], len(canonicals_nosil[x].split(' ')))
-                # print(decoded_nosil[x], len(decoded_nosil[x].split(' ')))
-                # complete_score1 = sum([1 if c == 'D' or c == 'S' else 0 for c in dc_path])
+
                 if use_ipa:
                     ipa_decoded = [c for c in decoded_nosil[x].split(' ') if c]
-                    ipa_decoded = [ipa_symbols.get(c, c) for c in ipa_decoded]
+                    ipa_decoded = [phonetic.cmu_to_ipa_wiki.get(c.upper(), c) for c in ipa_decoded]
                     decoded_nosil[x] = ' '.join(ipa_decoded)
 
                     ipa_canonicals = [c for c in canonicals_nosil[x].split(' ') if c]
-                    ipa_canonicals = [ipa_symbols.get(c, c) for c in ipa_canonicals]
+                    ipa_canonicals = [phonetic.cmu_to_ipa_wiki.get(c.upper(), c) for c in ipa_canonicals]
                     canonicals_nosil[x] = ' '.join(ipa_canonicals)
-
+                
                 tmp1, tmp2, tmp3, canonical_len2, d2 = print_align_space_canonical_origin(decoded_nosil[x], canonicals_nosil[x], dc_path)
-                # print(tmp1, len([c for c in tmp1.split(' ') if c]))
-                # print(tmp3, len([c for c in tmp3.split(' ') if c]))
-                # print(tmp2, len([c for c in tmp2.split(' ') if c]))
-                tmp1, tmp3, tmp2 = mild2(tmp1, tmp3, tmp2)
-                if not use_ipa:
-                    tmp1, tmp3, tmp2 = mild1(tmp1, tmp3, tmp2, level = 1)
-
+                
                 c_path = [c for c in canonicals_nosil[x].split(' ') if c]
                 dc_path = [c for c in tmp3.split(' ') if c]
                 complete_score = sum([1 if c == 'D' or c == 'S' else 0 for c in dc_path])
-                
-                print('wav       : ' + utt_list[x])
+                insertion_fault, substution_fault, deletion_fault = stastics(dc_path, ipa_canonicals, ipa_decoded)
+    
                 print("text      : " + utterance)
-                repeatted_words_list = word_dict.get(utt_list[x], None)
-                # print(repeatted_words_list)
-                # print(dc_path)
-
-                formatted_text = []
-                insertion_cnt = 0
-                # print(len(dc_path), repeatted_words_list[-1][-1]+1, len(canonicals_nosil[x].split(" ")))
-                # TODO: Due to mismatch problem, should be a err code return
-                insertion_cnt_preview = sum([e == 'I' for e in dc_path])
-                if len(dc_path)-insertion_cnt_preview < repeatted_words_list[-1][-1]+1:
-                    continue
-                # print(repeatted_words_list)
-                for l in repeatted_words_list:
-                    w, start, end = l
-                    k = start + insertion_cnt
-                    is_word_added = False
-                    total_phones = end - start + 1
-                    sd_cnt = 0
-                    while k <= end + insertion_cnt:
-                        if dc_path[k] == 'S' or dc_path[k] == 'D':
-                            sd_cnt += 1
-                            if not is_word_added and sd_cnt >= math.ceil(total_phones * display_threshold):
-                                formatted_text.append(colored(w, 'red', attrs=['bold']))
-                                is_word_added = True
-                            k += 1
-                        elif dc_path[k] == '-':
-                            k += 1
-                        else:
-                            # if not is_word_added:
-                            #     formatted_text.append(colored(w, 'red', attrs=['bold']))
-                            #     is_word_added = True
-                            k += 1
-                            insertion_cnt += 1
-                    if not is_word_added:
-                        formatted_text.append(colored(w, 'white', attrs=['bold']))
-                
-                cprint("c-text    : " + " ".join(formatted_text))    
+                print("IPA       : " + word_dict[utt_list[x]]['ipa'])  
                 print("canonical : " + tmp1) 
                 print("            " + tmp3)
                 print("decode    : " + tmp2)
-                print('ratio     : ' + str(len(c_path)-complete_score) + '/'+ str(len(c_path)))
-                print("\n")
-
+                print("ins err   : " + " ".join(insertion_fault))
+                print("sub err   : " + " ".join(substution_fault))
+                print("del err   : " + " ".join(deletion_fault))
+                print('complete  : ' + str(len(c_path)-complete_score) + '/'+ str(len(c_path)))
+                print("")
+            
+            for x in range(len(decoded_nosil)):
+                w1.write(utt_list[x] + " " + decoded_nosil[x] + "\n")    
     w1.close()
+
+def read_phonemes_from_transcript(can_phn_path):
+    can_transcript_phns = []
+    can_tg = textgrid.TextGrid.fromFile(can_phn_path)
+
+    for i in can_tg[1]:
+        if i.mark == "" or i.mark == None:
+            can_transcript_phns.append("sil")
+            
+            trans_phn = i.mark
+            trans_phn = trans_phn.strip(" ")
+            trans_phn = trans_phn.rstrip(string.digits)
+
+            ## trans phn 
+            if(trans_phn == "sp" or trans_phn == "SIL" or trans_phn == "" or trans_phn == "spn" ):
+                can_transcript_phns.append("sil")
+            else:
+                if(trans_phn == "ERR" or trans_phn == "err"):
+                    can_transcript_phns.append("err")
+                elif(trans_phn == "ER)"):
+                    can_transcript_phns.append("er")
+                elif(trans_phn == "AX" or trans_phn == "ax" or trans_phn == "AH)"):
+                    can_transcript_phns.append("ah")
+                elif(trans_phn == "V``"):
+                    can_transcript_phns.append("v")
+                elif(trans_phn == "W`"):
+                    can_transcript_phns.append("w")    
+                else:
+                    can_transcript_phns.append(trans_phn.lower())
+    
+    return can_transcript_phns
+
+def stastics(dc_path, ipa_canonicals, ipa_decoded):
+    insertion_fault = []
+    substution_fault = []
+    deletion_fault = []
+    
+    i, j, k = 0, 0, 0
+    while i < len(dc_path):
+        if dc_path[i] == '-':
+            i += 1
+            j += 1
+            k += 1
+            continue
+        elif dc_path[i] == 'S':
+            substution_fault.append(ipa_canonicals[j])
+            i += 1
+            j += 1
+            k += 1
+        elif dc_path[i] == 'I':
+            insertion_fault.append(ipa_decoded[k])
+            i += 1
+            k += 1
+        else:
+            deletion_fault.append(ipa_canonicals[j])
+            i += 1
+            j += 1
+    
+    return insertion_fault, substution_fault, deletion_fault          
 
 def main():
     system = platform.system()
     subfolder = ''
+    
     if system == 'Darwin':
         subfolder = 'mac'
     else:
@@ -433,30 +462,45 @@ def main():
 
     t0 = time.time()
     tmp_path = args.wav_transcript_path
-    use_ipa = args.vocabulary
+    
+    use_ipa = args.phonetic_format == 'ipa'
+    phoneme_frd = args.phonetic
+    
     w = open(tmp_path+"/wrd.txt",'w+')
     w1 = open(tmp_path+"/wav.scp",'w+')
     w4 = open(tmp_path+"/transcript_phn.txt",'w+')
-    print(args.wav_transcript_path)
-    if args.no_g2p_en:
+    
+    if args.phonetic == 'transcript':
         if not os.path.exists(args.textgrid_path):
             print(args.textgrid_path + ' , not a valid textGrid source')
     else:
         args.textgrid_path = None # bypass
 
+    print(args.wav_transcript_path, use_ipa, phoneme_frd)
+
     total_wav_time = 0
     cnt = 0
-    g2p = G2p()
+    t1 = time.time()
+
+    phonetic = Phonetic()
+    if phoneme_frd == 'phonemizer':
+        phonetic_generator = phonetic.phonemizer_sentence
+    else:
+        phonetic_generator = phonetic.g2p_ex_sentence
+
     can_transcript_words_dict = dict()
+
     opts, device, model, decoder, vocab = infer_init()
+
     silence_wav_path = './silence.wav'
     denoised_dir = os.path.normpath('/'.join([args.wav_transcript_path, 'denoised']))
     os.makedirs(denoised_dir, exist_ok=True)
     far_data, fs = sf.read(silence_wav_path)
     data_limit = len(far_data)
-    t1 = time.time()
+    
+    # denoise process
     for p in os.listdir(args.wav_transcript_path):
-        if 'denoised' in p:
+        if os.path.isdir('/'.join([args.wav_transcript_path, p])):
             continue
 
         ext = p.split('.')[1]
@@ -480,7 +524,7 @@ def main():
 
         data, fs = sf.read(denoised_wav_path)
         if len(data) > data_limit:
-            print('{} skipped, Cuz wav length should be no more than 3 minutes!'.format(wav_path))
+            print('{} skipped, currently wav length should be no more than 3 minutes!'.format(wav_path))
             continue
 
         total_wav_time += len(data) / fs
@@ -489,75 +533,46 @@ def main():
     
     t2 = time.time()
     for p in os.listdir(args.wav_transcript_path):
-        if 'denoised' in p:
+        if os.path.isdir('/'.join([args.wav_transcript_path, p])):
             continue
+
         ext = p.split('.')[1]
         utt_id = p.split('.')[0]
         if ext != 'wav':
             continue
-
-        tmp2 = re.sub('wav', 'txt', p)
-        text_path = os.path.normpath('/'.join([args.wav_transcript_path, tmp2]))                
-        
-        if not os.path.exists(text_path):
-            continue
-
+            
         can_transcript_phns = []
-        can_transcript_words = []
-
-        with open(text_path,'r') as f:
-            index = 0
-            for utterance in f.readlines():
-                utterance = re.sub(r'[^\w\s]', '', utterance)
-                w.write(utt_id + " " + utterance + "\n")
-                words = utterance.split(" ")
-                l3_g2pen = []
-                l3_word = []
-                for word in words:
-                    p_w = g2p(word)
-                    p_w = [p.lower() for p in p_w]
-                    p_w = [p.rstrip(string.digits) for p in p_w]
-                    l3_g2pen += p_w
-                    l3_word.append([word, index, index + len(p_w) - 1])
-                    index += len(p_w)
-
-                can_transcript_phns += l3_g2pen
-                can_transcript_words += l3_word
         
-        can_transcript_words_dict[utt_id] =  can_transcript_words
-        
-        if args.no_g2p_en:
-            can_transcript_phns = []
+        if args.phonetic == 'transcript':
             tmp1 = re.sub('wav', 'TextGrid', p)
             can_phn_path = os.path.normpath('/'.join([args.textgrid_path, tmp1]))
-            
-            can_tg = textgrid.TextGrid.fromFile(can_phn_path)
+            if not os.path.exists(can_phn_path):
+                continue
 
-            for i in can_tg[1]:
-                if i.mark == "" or i.mark == None:
-                    can_transcript_phns.append("sil")
+            can_transcript_phns = read_phonemes_from_transcript(can_phn_path)
+        else:
+            tmp2 = re.sub('wav', 'txt', p)
+            text_path = os.path.normpath('/'.join([args.wav_transcript_path, tmp2]))
+            if not os.path.exists(text_path):
+                continue
             
-                trans_phn = i.mark
-                trans_phn = trans_phn.strip(" ")
-                trans_phn = trans_phn.rstrip(string.digits)
+            with open(text_path,'r') as f:
+                for utterance in f.readlines():
+                    w.write(utt_id + " " + utterance + "\n")
+                    # print(utterance)
+                    can_transcript_phns_ipa = phonetic_generator(utterance, False, True)
+                    
+                    can_transcript_phns, phns = phonetic_generator(utterance, True, True)
+                    parts = can_transcript_phns.split(' ')
+                    parts = [p.rstrip(string.digits).lower() for p in parts]
+                    can_transcript_phns_for_models = ' '.join(parts)
 
-                ## trans phn 
-                if(trans_phn == "sp" or trans_phn == "SIL" or trans_phn == "" or trans_phn == "spn" ):
-                    can_transcript_phns.append("sil")
-                else:
-                    if(trans_phn == "ERR" or trans_phn == "err"):
-                        can_transcript_phns.append("err")
-                    elif(trans_phn == "ER)"):
-                        can_transcript_phns.append("er")
-                    elif(trans_phn == "AX" or trans_phn == "ax" or trans_phn == "AH)"):
-                        can_transcript_phns.append("ah")
-                    elif(trans_phn == "V``"):
-                        can_transcript_phns.append("v")
-                    elif(trans_phn == "W`"):
-                        can_transcript_phns.append("w")    
-                    else:
-                        can_transcript_phns.append(trans_phn.lower())
-        w4.write(utt_id + " " + " ".join(del_repeat_sil(can_transcript_phns)) + "\n" )
+                can_transcript_words_dict[utt_id] = {
+                    'ipa': can_transcript_phns_ipa,
+                    'ipa_phns' : phns
+                }
+        
+        w4.write(utt_id + " " + can_transcript_phns_for_models + "\n" )
     
     w.close()
     w4.close()
@@ -570,8 +585,9 @@ def main():
     # print(cmd)
     # os.system(cmd)
     subprocess.check_output(cmd, shell=True, stderr=subprocess.STDOUT)
-    test_loader, test_wrd_dict = infer_data_init(opts, vocab)
-    infer(can_transcript_words_dict, test_loader, device, model, decoder, vocab, test_wrd_dict, use_ipa)
+    
+    test_loader, test_transcipt_dict = infer_data_init(opts, vocab)
+    infer(phonetic, can_transcript_words_dict, test_loader, device, model, decoder, vocab, test_transcipt_dict, use_ipa)
 
     # remove denoise dir
     shutil.rmtree(denoised_dir)
@@ -582,7 +598,6 @@ def main():
     os.remove(tmp_path+"/fbank.scp")
     os.remove(tmp_path+"/fbank.ark")
 
-    
     end = time.time()
     time_used = (end - t0)
     rtf = time_used / total_wav_time

@@ -18,7 +18,8 @@ class Phonetic(object):
             'AY' : 'aɪ',
             'EH' : 'ɛ',
             # TODO: Suprasegmentals in wiki: https://en.wikipedia.org/wiki/International_Phonetic_Alphabet#Pitch_and_tone
-            'ER' : 'ɜ',
+            # 'ER' : 'ɜ',
+            'ER' : 'ər',
             'EY' : 'eɪ',
             'IH' : 'ɪ',
             'IY' : 'i',
@@ -63,6 +64,7 @@ class Phonetic(object):
 
         for k, v in self.cmu_to_ipa_wiki.items():
             self.ipa_to_cmu_wiki[v] = k
+        self.ipa_to_cmu_wiki['ɜ'] = 'ER'
 
         self.cmu_phones = list(self.cmu_to_ipa_wiki.keys())
         self.cmu_phones.remove('AH0')
@@ -223,10 +225,12 @@ class Phonetic(object):
 
     def _ipa_phonemizer_normalized(self, phonetic : str) -> str:
         phonetic = phonetic.replace('ɹ', 'r')
+        phonetic = phonetic.replace('ɚ', 'ə')
         phonetic = phonetic.replace('ɐ', 'ə')
         phonetic = phonetic.replace('ᵻ', 'ɪ')
         phonetic = phonetic.replace('ɡ', 'g')
         phonetic = phonetic.replace('ɑ', 'a')
+        phonetic = phonetic.replace('ɾ', 't')
 
         # remove 2nd stress ˌ
         phonetic = phonetic.replace('ˌ', '')
@@ -260,10 +264,12 @@ class Phonetic(object):
 
     def _ipa_to_phones39(self, phonetic : str) -> List[str]:
         phonetic = phonetic.replace('ɹ', 'r')
+        phonetic = phonetic.replace('ɚ', 'ə')
         phonetic = phonetic.replace('ɐ', 'ə')
         phonetic = phonetic.replace('ᵻ', 'ɪ')
         phonetic = phonetic.replace('ɡ', 'g')
         phonetic = phonetic.replace('ɑ', 'a')
+        phonetic = phonetic.replace('ɾ', 't')
         phonetic = phonetic.replace('ː', '')
 
         phones = []
@@ -317,6 +323,7 @@ class Phonetic(object):
 
     def g2p_ex(self, word, to_ipa = True, stress = True) -> str:
         phones = self.g2p(word)
+        # print(phones)
         
         if to_ipa:
             phones = self._phones39_to_ipa(phones, stress)
@@ -327,6 +334,7 @@ class Phonetic(object):
     def phonemizer_sentence(self, text, to_phones = False, normalized = True) -> str:
         phonetic = self.backend.phonemize([text])[0]
         phonetic = phonetic.strip()
+        print(phonetic)
         
         if to_phones:
             phonetics = phonetic.split(' ')
@@ -335,14 +343,21 @@ class Phonetic(object):
             for p in phones:
                 # TODO: better formatting
                 full_phones = full_phones + p + [" "]
-            return " ".join(full_phones)
+            return " ".join(full_phones), phones
 
         if normalized:
             phonetics = [self._ipa_phonemizer_normalized(p) for p in phonetic.split(' ')]
             return ' '.join(phonetics)
 
     def g2p_ex_sentence(self, text, to_phones = False, normalized = True) -> str:
-        pass
+        to_ipa = True if not to_phones else False
+        stress = True if normalized else False
+        
+        if to_ipa:
+            return self.g2p_ex(text, to_ipa, stress)
+        else:
+            ret = self.g2p_ex(text, to_ipa, stress)
+            return ret, ret.split(' ')
 
 def main():
     phonetic = Phonetic()
@@ -352,8 +367,10 @@ def main():
     words0 = ["2"]
     words1 = ["about", "through", "rough", "cough", "content", "ought", "magazine", "hurt", "but", "accept", "talked", "bananas", "wishes", "OPPO"]
     words2 = ['suburban', 'kit', 'odd', 'outstanding', 'geology', 'ZZ', 'dashing', "good", 'longtimenosee', 'phoneme']
+    words3 = ['vocabulary', 'algorithms', 'thorough', 'gather']
 
     words = words0 + words1 + words2
+    words = words3
     # words = ['about']
     for word in words:
         s1 = phonetic.ipa_dict(word)
@@ -364,12 +381,12 @@ def main():
         s3 = phonetic.g2p_ex(word)
         s3_1 = phonetic.g2p_ex(word, False)
         
-        print(word, s2, s3)
+        print(word, s2, s3, s1, s4)
         # print(s1_1)
         # print(s2_1)
         # print(s3_1)
         # print(word, s1, s2, s3, s4, s1 == s2)
-
+    exit()
     #sentence
     texts = [
         "I refuse to collect the refuse around here.", # homograph
