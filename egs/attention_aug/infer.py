@@ -376,7 +376,8 @@ def infer(phonetic, word_dict, test_loader, device, model, decoder, vocab, test_
                 dc_path = [c for c in tmp3.split(' ') if c]
                 complete_score = sum([1 if c == 'D' or c == 'S' else 0 for c in dc_path])
                 insertion_fault, substution_fault, deletion_fault = stastics(dc_path, ipa_canonicals, ipa_decoded)
-    
+
+                print("id        : " + utt_list[x])
                 print("text      : " + utterance)
                 print("IPA       : " + word_dict[utt_list[x]]['ipa'])  
                 print("canonical : " + tmp1) 

@@ -18,8 +18,8 @@ class Phonetic(object):
             'AY' : 'aɪ',
             'EH' : 'ɛ',
             # TODO: Suprasegmentals in wiki: https://en.wikipedia.org/wiki/International_Phonetic_Alphabet#Pitch_and_tone
-            # 'ER' : 'ɜ',
-            'ER' : 'ər',
+            'ER' : 'ɜ',
+            # 'ER' : 'ər',
             'EY' : 'eɪ',
             'IH' : 'ɪ',
             'IY' : 'i',
@@ -334,7 +334,6 @@ class Phonetic(object):
     def phonemizer_sentence(self, text, to_phones = False, normalized = True) -> str:
         phonetic = self.backend.phonemize([text])[0]
         phonetic = phonetic.strip()
-        print(phonetic)
         
         if to_phones:
             phonetics = phonetic.split(' ')
@@ -367,10 +366,10 @@ def main():
     words0 = ["2"]
     words1 = ["about", "through", "rough", "cough", "content", "ought", "magazine", "hurt", "but", "accept", "talked", "bananas", "wishes", "OPPO"]
     words2 = ['suburban', 'kit', 'odd', 'outstanding', 'geology', 'ZZ', 'dashing', "good", 'longtimenosee', 'phoneme']
-    words3 = ['vocabulary', 'algorithms', 'thorough', 'gather']
+    words3 = ['vocabulary', 'algorithm', 'thorough', 'gather', 'metal', 'pull', 'Toronto']
 
-    words = words0 + words1 + words2
-    words = words3
+    words = words0 + words1 + words2 + words3
+    # words = words3
     # words = ['about']
     for word in words:
         s1 = phonetic.ipa_dict(word)
@@ -381,7 +380,8 @@ def main():
         s3 = phonetic.g2p_ex(word)
         s3_1 = phonetic.g2p_ex(word, False)
         
-        print(word, s2, s3, s1, s4)
+        print(word, s2, s3)
+        # print(word, s2, s3, s1, s4)
         # print(s1_1)
         # print(s2_1)
         # print(s3_1)
