@@ -280,6 +280,8 @@ def infer_data_init(opts, vocab):
     return test_loader, test_transcipt_dict
     
 def infer(phonetic, word_dict, test_loader, device, model, decoder, vocab, test_transcipt_dict, use_ipa):    
+    total_correct_cnt = 0
+    total_cnt = 0 
     w1 = open(args.wav_transcript_path + "/decode_seq.txt",'w+')
     
     with torch.no_grad():
@@ -334,8 +336,15 @@ def infer(phonetic, word_dict, test_loader, device, model, decoder, vocab, test_
                 
                 del_sub_cnt = sum([1 if c == 'D' or c == 'S' else 0 for c in dc_path])
                 correct_cnt = sum([1 if c == '-' else 0 for c in dc_path])
-
                 insertion_fault, substution_fault, deletion_fault = stastics(dc_path, phones_canonicals, phones_decoded)
+
+                # if utt_list[x] == '18':
+                #     print(dc_path)
+                #     print(phones_canonicals)
+                #     print(phones_decoded)
+                #     print(insertion_fault)
+                #     print(substution_fault)
+                #     print(deletion_fault)
 
                 print("id        : " + utt_list[x])
                 print("text      : " + utterance)
@@ -348,9 +357,12 @@ def infer(phonetic, word_dict, test_loader, device, model, decoder, vocab, test_
                 print("del err   : " + " ".join(deletion_fault))
                 print('complete  : ' + str(correct_cnt) + '/'+ str(correct_cnt + del_sub_cnt))
                 print("")
-
+                
+                total_correct_cnt += correct_cnt
+                total_cnt += correct_cnt + del_sub_cnt
                 w1.write(utt_list[x] + " " + " ".join(phones_decoded) + "\n")    
     w1.close()
+    return total_correct_cnt, total_cnt
 
 def read_phonemes_from_transcript(can_phn_path):
     can_transcript_phns = []
@@ -403,11 +415,13 @@ def stastics(dc_path, phones_canonicals, phones_decoded):
         elif dc_path[i] == 'I':
             insertion_fault.append(phones_decoded[k])
             i += 1
+            j += 1
             k += 1
         else:
             deletion_fault.append(phones_canonicals[j])
             i += 1
             j += 1
+            k += 1
     
     return insertion_fault, substution_fault, deletion_fault          
 
@@ -419,6 +433,8 @@ def main():
         subfolder = 'mac'
     else:
         subfolder = 'linux'
+    
+    # export PHONEMIZER_ESPEAK_LIBRARY=/opt/homebrew/Cellar/espeak/1.48.04_1/lib/libespeak.dylib
 
     t0 = time.time()
     tmp_path = args.wav_transcript_path
@@ -442,7 +458,13 @@ def main():
     cnt = 0
     t1 = time.time()
 
-    phonetic = Phonetic()
+    try:
+        os.environ['PHONEMIZER_ESPEAK_LIBRARY'] = '/opt/homebrew/Cellar/espeak/1.48.04_1/lib/libespeak.dylib'
+        phonetic = Phonetic()
+    except:
+        os.environ['PHONEMIZER_ESPEAK_LIBRARY'] = '/usr/local/Cellar/espeak/1.48.04_1/lib/libespeak.dylib'
+        phonetic = Phonetic()
+
     if phoneme_frd == 'phonemizer':
         phonetic_generator = phonetic.phonemizer_sentence
     else:
@@ -547,8 +569,8 @@ def main():
     subprocess.check_output(cmd, shell=True, stderr=subprocess.STDOUT)
     
     test_loader, test_transcipt_dict = infer_data_init(opts, vocab)
-    infer(phonetic, can_transcript_words_dict, test_loader, device, model, decoder, vocab, test_transcipt_dict, use_ipa)
-
+    c1, c2 = infer(phonetic, can_transcript_words_dict, test_loader, device, model, decoder, vocab, test_transcipt_dict, use_ipa)
+    print(c1, c2)
     # remove denoise dir
     shutil.rmtree(denoised_dir)
     os.remove(tmp_path+"/wrd.txt")
