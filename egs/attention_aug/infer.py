@@ -199,6 +199,12 @@ def align_canonical_decoded(s1, s2, l):
             s2 = s2[i-1:]
             l = l[i-1:]
             d['I'] = d['I'][i-1:]
+
+    # TODO: remove the repeating phoneme at start, this is the model inference optimization
+    if l[0] == s2[0] == 'I' and len(s1) >= 2 and s1[0] == s1[1]:
+        l = l[1:]
+        s2 = s2[1:]
+        s1 = s1[1:]
     
     return s1, s2, l
 
@@ -544,13 +550,13 @@ def main():
     infer(phonetic, can_transcript_words_dict, test_loader, device, model, decoder, vocab, test_transcipt_dict, use_ipa)
 
     # remove denoise dir
-    # shutil.rmtree(denoised_dir)
-    # os.remove(tmp_path+"/wrd.txt")
-    # os.remove(tmp_path+"/wav.scp")
-    # os.remove(tmp_path+"/transcript_phn.txt")
-    # os.remove(tmp_path+"/decode_seq.txt")
-    # os.remove(tmp_path+"/fbank.scp")
-    # os.remove(tmp_path+"/fbank.ark")
+    shutil.rmtree(denoised_dir)
+    os.remove(tmp_path+"/wrd.txt")
+    os.remove(tmp_path+"/wav.scp")
+    os.remove(tmp_path+"/transcript_phn.txt")
+    os.remove(tmp_path+"/decode_seq.txt")
+    os.remove(tmp_path+"/fbank.scp")
+    os.remove(tmp_path+"/fbank.ark")
 
     end = time.time()
     time_used = (end - t0)
