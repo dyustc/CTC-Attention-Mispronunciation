@@ -152,82 +152,25 @@ def mild1(s1, s2, s3, level = 1):
 
     return s1, s2, s3
 
-def mild2(s1, s2, s3):
-    l1 = s1.split(' ')
-    l2 = s2.split(' ')
-    l3 = s3.split(' ')
+def print_aligned_string(s1, s2, l):
+    s1 = [p+" " if len(p) == 1 else p for p in s1]
+    s2 = [p+" " if len(p) == 1 else p for p in s2]
+    l = [s+" " for s in l]
 
-    i, j, k = 0, 0, 0
-    while l1[i] in ['I', ''] and l2[j] == l1[i]:
-        i += 1
-        j += 1
-        if l1[i]:
-            k += 1
-    
-    if k > 1:
-        k1 = 0
-        k2 = 0
-        while k1 < k - 1:
-            if l3[k2] != '':
-                k1 += 1
-            k2 += 1
+    return " ".join(s1), " ".join(s2), " ".join(l)
 
-        l1 = l1[2 * (k-1):]
-        l2 = l2[2 * (k-1):]
-        if l3[k2] == '':
-            l3 = l3[k2+1:]
-        else:
-            l3 = l3[k2:]
-
-    l1 = l1[::-1]
-    l2 = l2[::-1]
-    l3 = l3[::-1]
-
-    i, j, k = 0, 0, 0
-    while l1[i] in ['I', ''] and l2[j] == l1[i]:
-        i += 1
-        j += 1
-        if l1[i]:
-            k += 1
-
-    if k > 2:
-        k1 = 0
-        k2 = 0
-        while k1 < k - 2:
-            if l3[k2] != '':
-                k1 += 1
-            k2 += 1
-
-        l1 = l1[2 * (k-2):]
-        l2 = l2[2 * (k-2):]
-        l3 = l3[k2:]
-    
-    l1 = l1[::-1]
-    l2 = l2[::-1]
-    l3 = l3[::-1]
-
-    s1 = ' '.join(l1)
-    s2 = ' '.join(l2)
-    s3 = ' '.join(l3)
-    
-    return s1, s2, s3
-
-def print_align_space_canonical_origin(s1, s2, l):
-    p_s1 = s1.split(' ')
-    p_s2 = s2.split(' ')
-
-    d = {}
-    for i in range(len(p_s2)):
+def align_canonical_decoded(s1, s2, l):
+    d = {} # log for each phoneme in canonicals
+    for i in range(len(s2)):
         d[i] = ""
     d['I'] = []
     
-    i = 0
-    j = 0
+    i, j = 0, 0
     while i < len(l):
         if l[i] == '-' or l[i] == 'S':
             d[j] = l[i]
             if l[i] == 'S':
-                d[j] += p_s1[i]
+                d[j] += s1[i]
             i += 1
             j += 1
             continue
@@ -235,17 +178,29 @@ def print_align_space_canonical_origin(s1, s2, l):
         if l[i] == 'D':
             d[j] = 'D'
             j += 1
-            p_s1.insert(i, 'D')
+            s1.insert(i, 'D')
         else:
-            d['I'] += [str(j-1) + str(j)]
-            p_s2.insert(i, 'I')
+            d['I'] += [i]
+            s2.insert(i, 'I')
         i += 1
     
-    p_s1 = [p+" " if len(p) == 1 else p for p in p_s1]
-    p_s2 = [p+" " if len(p) == 1 else p for p in p_s2]
-    l = [s+" " for s in l]
-
-    return ' '.join(p_s2), ' '.join(p_s1), ' '.join(l), len(p_s2), d
+    # TODO: remove insertion at the beginning, this is the model inference optimization
+    if d['I']:
+        i = 0
+        while i == d['I'][i]:
+            i += 1
+            if i == len(d['I']):
+                break
+        
+        if i == 0:
+            pass
+        else:
+            s1 = s1[i-1:]
+            s2 = s2[i-1:]
+            l = l[i-1:]
+            d['I'] = d['I'][i-1:]
+    
+    return s1, s2, l
 
 def infer_init():
     try:
@@ -361,36 +316,34 @@ def infer(phonetic, word_dict, test_loader, device, model, decoder, vocab, test_
                 decoded_nosil[x] = decoded_nosil[x].replace('  ', ' ')
                 _, dc_path = decoder.wer(decoded_nosil[x], canonicals_nosil[x])
 
+                phones_decoded = [c for c in decoded_nosil[x].split(' ') if c]
+                phones_canonicals = [c for c in canonicals_nosil[x].split(' ') if c]
+                
                 if use_ipa:
-                    ipa_decoded = [c for c in decoded_nosil[x].split(' ') if c]
-                    ipa_decoded = [phonetic.cmu_to_ipa_wiki.get(c.upper(), c) for c in ipa_decoded]
-                    decoded_nosil[x] = ' '.join(ipa_decoded)
+                    phones_decoded = [phonetic.cmu_to_ipa_wiki.get(c.upper(), c) for c in phones_decoded]
+                    phones_canonicals = [phonetic.cmu_to_ipa_wiki.get(c.upper(), c) for c in phones_canonicals]
 
-                    ipa_canonicals = [c for c in canonicals_nosil[x].split(' ') if c]
-                    ipa_canonicals = [phonetic.cmu_to_ipa_wiki.get(c.upper(), c) for c in ipa_canonicals]
-                    canonicals_nosil[x] = ' '.join(ipa_canonicals)
+                phones_decoded, phones_canonicals, dc_path = align_canonical_decoded(phones_decoded, phones_canonicals, dc_path)
+                tmp1, tmp2, tmp3 = print_aligned_string(phones_decoded, phones_canonicals, dc_path) 
                 
-                tmp1, tmp2, tmp3, canonical_len2, d2 = print_align_space_canonical_origin(decoded_nosil[x], canonicals_nosil[x], dc_path)
-                
-                c_path = [c for c in canonicals_nosil[x].split(' ') if c]
-                dc_path = [c for c in tmp3.split(' ') if c]
-                complete_score = sum([1 if c == 'D' or c == 'S' else 0 for c in dc_path])
-                insertion_fault, substution_fault, deletion_fault = stastics(dc_path, ipa_canonicals, ipa_decoded)
+                del_sub_cnt = sum([1 if c == 'D' or c == 'S' else 0 for c in dc_path])
+                correct_cnt = sum([1 if c == '-' else 0 for c in dc_path])
+
+                insertion_fault, substution_fault, deletion_fault = stastics(dc_path, phones_canonicals, phones_decoded)
 
                 print("id        : " + utt_list[x])
                 print("text      : " + utterance)
                 print("IPA       : " + word_dict[utt_list[x]]['ipa'])  
-                print("canonical : " + tmp1) 
+                print("canonical : " + tmp2) 
                 print("            " + tmp3)
-                print("decode    : " + tmp2)
+                print("decode    : " + tmp1)
                 print("ins err   : " + " ".join(insertion_fault))
                 print("sub err   : " + " ".join(substution_fault))
                 print("del err   : " + " ".join(deletion_fault))
-                print('complete  : ' + str(len(c_path)-complete_score) + '/'+ str(len(c_path)))
+                print('complete  : ' + str(correct_cnt) + '/'+ str(correct_cnt + del_sub_cnt))
                 print("")
-            
-            for x in range(len(decoded_nosil)):
-                w1.write(utt_list[x] + " " + decoded_nosil[x] + "\n")    
+
+                w1.write(utt_list[x] + " " + " ".join(phones_decoded) + "\n")    
     w1.close()
 
 def read_phonemes_from_transcript(can_phn_path):
@@ -424,7 +377,7 @@ def read_phonemes_from_transcript(can_phn_path):
     
     return can_transcript_phns
 
-def stastics(dc_path, ipa_canonicals, ipa_decoded):
+def stastics(dc_path, phones_canonicals, phones_decoded):
     insertion_fault = []
     substution_fault = []
     deletion_fault = []
@@ -437,16 +390,16 @@ def stastics(dc_path, ipa_canonicals, ipa_decoded):
             k += 1
             continue
         elif dc_path[i] == 'S':
-            substution_fault.append(ipa_canonicals[j])
+            substution_fault.append(phones_canonicals[j])
             i += 1
             j += 1
             k += 1
         elif dc_path[i] == 'I':
-            insertion_fault.append(ipa_decoded[k])
+            insertion_fault.append(phones_decoded[k])
             i += 1
             k += 1
         else:
-            deletion_fault.append(ipa_canonicals[j])
+            deletion_fault.append(phones_canonicals[j])
             i += 1
             j += 1
     
@@ -591,13 +544,13 @@ def main():
     infer(phonetic, can_transcript_words_dict, test_loader, device, model, decoder, vocab, test_transcipt_dict, use_ipa)
 
     # remove denoise dir
-    shutil.rmtree(denoised_dir)
-    os.remove(tmp_path+"/wrd.txt")
-    os.remove(tmp_path+"/wav.scp")
-    os.remove(tmp_path+"/transcript_phn.txt")
-    os.remove(tmp_path+"/decode_seq.txt")
-    os.remove(tmp_path+"/fbank.scp")
-    os.remove(tmp_path+"/fbank.ark")
+    # shutil.rmtree(denoised_dir)
+    # os.remove(tmp_path+"/wrd.txt")
+    # os.remove(tmp_path+"/wav.scp")
+    # os.remove(tmp_path+"/transcript_phn.txt")
+    # os.remove(tmp_path+"/decode_seq.txt")
+    # os.remove(tmp_path+"/fbank.scp")
+    # os.remove(tmp_path+"/fbank.ark")
 
     end = time.time()
     time_used = (end - t0)
