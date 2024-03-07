@@ -7,6 +7,7 @@
 # 跑之前，需要进行以下命令行安装
 
 # for mac M1/M2
+` $ pip install phonemizer `
 ` $ arch -x86_64 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)"`
 ` $ arch -x86_64 /usr/local/bin/brew install espeak`
 
