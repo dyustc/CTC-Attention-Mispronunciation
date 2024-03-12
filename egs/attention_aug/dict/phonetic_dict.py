@@ -9,6 +9,7 @@ import csv
 class Phonetic(object):
     def __init__(self) -> None:
         self.cmu_to_ipa_wiki = {
+            # TODO: ɒ vs ɑ ɑːd dɒɡ hɑːt a hɑːrt
             "AA" : 'a',
             'AE' : 'æ',
             'AH0' : 'ə',
@@ -16,7 +17,7 @@ class Phonetic(object):
             'AO' : 'ɔ',
             'AW' : 'aʊ',
             'AY' : 'aɪ',
-            'EH' : 'ɛ',
+            'EH' : 'e',
             # TODO: Suprasegmentals in wiki: https://en.wikipedia.org/wiki/International_Phonetic_Alphabet#Pitch_and_tone
             'ER' : 'ɜ',
             # 'ER' : 'ər',
@@ -225,7 +226,10 @@ class Phonetic(object):
 
     def _ipa_phonemizer_normalized(self, phonetic : str) -> str:
         phonetic = phonetic.replace('ɹ', 'r')
-        phonetic = phonetic.replace('ɚ', 'ə')
+        phonetic = phonetic.replace('ɚr', 'ər')
+        phonetic = phonetic.replace('ɚˈr', 'ər')
+        phonetic = phonetic.replace('ɚ', 'ər')
+        phonetic = phonetic.replace('ɛ', 'e')
         phonetic = phonetic.replace('ɐ', 'ə')
         phonetic = phonetic.replace('ᵻ', 'ɪ')
         phonetic = phonetic.replace('ɡ', 'g')
@@ -264,7 +268,10 @@ class Phonetic(object):
 
     def _ipa_to_phones39(self, phonetic : str) -> List[str]:
         phonetic = phonetic.replace('ɹ', 'r')
-        phonetic = phonetic.replace('ɚ', 'ə')
+        phonetic = phonetic.replace('ɚr', 'ər')
+        phonetic = phonetic.replace('ɚˈr', 'ər')
+        phonetic = phonetic.replace('ɚ', 'ər')
+        phonetic = phonetic.replace('ɛ', 'e')
         phonetic = phonetic.replace('ɐ', 'ə')
         phonetic = phonetic.replace('ᵻ', 'ɪ')
         phonetic = phonetic.replace('ɡ', 'g')
@@ -366,10 +373,11 @@ def main():
     words0 = ["2"]
     words1 = ["about", "through", "rough", "cough", "content", "ought", "magazine", "hurt", "but", "accept", "talked", "bananas", "wishes", "OPPO"]
     words2 = ['suburban', 'kit', 'odd', 'outstanding', 'geology', 'ZZ', 'dashing', "good", 'longtimenosee', 'phoneme']
-    words3 = ['vocabulary', 'algorithm', 'thorough', 'gather', 'metal', 'pull', 'Toronto']
-
+    words3 = ['vocabulary', 'algorithm', 'thorough', 'gather', 'metal', 'pull', 'Toronto', 'hot', 'heart']
+    words4 = ['rear', 'bear', 'tour', 'cats', 'tree', 'dog', 'dream', 'beds', 'brother', 'oat']
     words = words0 + words1 + words2 + words3
-    # words = words3
+    # ɑːd dɒɡ hɑːt a hɑːrt
+    # words = words4
     # words = ['about']
     for word in words:
         s1 = phonetic.ipa_dict(word)
@@ -381,6 +389,8 @@ def main():
         s3_1 = phonetic.g2p_ex(word, False)
         
         print(word, s2, s3)
+        # print(s2_1)
+        # print(s3_1)
         # print(word, s2, s3, s1, s4)
         # print(s1_1)
         # print(s2_1)
