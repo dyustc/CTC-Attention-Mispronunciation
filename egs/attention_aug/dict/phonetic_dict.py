@@ -20,7 +20,6 @@ class Phonetic(object):
             'EH' : 'e',
             # TODO: Suprasegmentals in wiki: https://en.wikipedia.org/wiki/International_Phonetic_Alphabet#Pitch_and_tone
             'ER' : 'ɜ',
-            # 'ER' : 'ər',
             'EY' : 'eɪ',
             'IH' : 'ɪ',
             'IY' : 'i',

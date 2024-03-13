@@ -337,6 +337,8 @@ def infer(phonetic, word_dict, test_loader, device, model, decoder, vocab, test_
                 del_sub_cnt = sum([1 if c == 'D' or c == 'S' else 0 for c in dc_path])
                 correct_cnt = sum([1 if c == '-' else 0 for c in dc_path])
                 insertion_fault, substution_fault, deletion_fault = stastics(dc_path, phones_canonicals, phones_decoded)
+                tmp_score = min(len(insertion_fault) / 2, 0.2 * correct_cnt)
+                score = math.ceil((1 - (del_sub_cnt + tmp_score)/(del_sub_cnt + correct_cnt)) * 100)
 
                 # if utt_list[x] == '18':
                 #     print(dc_path)
@@ -356,6 +358,7 @@ def infer(phonetic, word_dict, test_loader, device, model, decoder, vocab, test_
                 print("sub err   : " + " ".join(substution_fault))
                 print("del err   : " + " ".join(deletion_fault))
                 print('complete  : ' + str(correct_cnt) + '/'+ str(correct_cnt + del_sub_cnt))
+                print('score     : ' + str(score))
                 print("")
                 
                 total_correct_cnt += correct_cnt
@@ -434,8 +437,6 @@ def main():
     else:
         subfolder = 'linux'
     
-    # export PHONEMIZER_ESPEAK_LIBRARY=/opt/homebrew/Cellar/espeak/1.48.04_1/lib/libespeak.dylib
-
     t0 = time.time()
     tmp_path = args.wav_transcript_path
     
@@ -457,12 +458,14 @@ def main():
     total_wav_time = 0
     cnt = 0
     t1 = time.time()
-
-    try:
-        os.environ['PHONEMIZER_ESPEAK_LIBRARY'] = '/opt/homebrew/Cellar/espeak/1.48.04_1/lib/libespeak.dylib'
-        phonetic = Phonetic()
-    except:
-        os.environ['PHONEMIZER_ESPEAK_LIBRARY'] = '/usr/local/Cellar/espeak/1.48.04_1/lib/libespeak.dylib'
+    if system == 'Darwin':
+        try:
+            os.environ['PHONEMIZER_ESPEAK_LIBRARY'] = '/opt/homebrew/Cellar/espeak/1.48.04_1/lib/libespeak.dylib'
+            phonetic = Phonetic()
+        except:
+            os.environ['PHONEMIZER_ESPEAK_LIBRARY'] = '/usr/local/Cellar/espeak/1.48.04_1/lib/libespeak.dylib'
+            phonetic = Phonetic()
+    else:
         phonetic = Phonetic()
 
     if phoneme_frd == 'phonemizer':
