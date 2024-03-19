@@ -1,0 +1,3 @@
+[submodule "ECDICT"]
+	path = ECDICT
+	url = https://github.com/dyustc/ECDICT.git
