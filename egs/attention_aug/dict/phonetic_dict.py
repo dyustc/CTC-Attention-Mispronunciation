@@ -5,6 +5,12 @@ from phonemizer.backend import EspeakBackend
 from typing import List
 import sys
 import csv
+import os
+import warnings
+
+ECDICT_PATH = os.path.abspath('/'.join([os.path.dirname(__file__), '..', '..', '..', 'ECDICT']))
+sys.path.append(ECDICT_PATH)
+from stardict import DictCsv
 
 class Phonetic(object):
     def __init__(self) -> None:
@@ -92,10 +98,18 @@ class Phonetic(object):
         self.cmudict_ipa = {}
         self.cmudict_plain = {}
         self.letter_ipa_dict = {}
+        self.dc = {}
 
         self.g2p = G2p()
         self.backend = EspeakBackend('en-us', with_stress = True)
 
+    def load_ecdict(self, reload = False) -> None:
+        if self.dc.__len__() == 0 or reload:
+            csvname = os.path.join(ECDICT_PATH, 'ecdict.csv')
+            self.dc = DictCsv(csvname)
+        
+        return
+   
     def load_cmudict_ipa(self, reload = False) -> None:
         if self.cmudict_ipa.__len__() == 0 or reload:
             # init cmu ipa dict
@@ -156,6 +170,43 @@ class Phonetic(object):
             if p1 != p2:
                 print(phone, p1, p2)
     
+    def dc_dict(self, word) -> dict:
+        self.load_ecdict()
+
+        result = self.dc.query(word.lower())
+        # fields = [
+        #     'word', 
+        #     'translation', 
+        #     'phonetic', 
+        #     'exchange', 
+        #     'audio'
+        #     ]
+
+        if result is None or not result.get('translation', None):
+            message = f"Word {word} not found in dictionary."
+            warnings.warn(message)
+            return {}
+        else:
+            return result
+
+    def word_phrase_translation(self, word) -> str:
+        result = self.dc_dict(word)
+        ret = result.get('translation', None)
+        if ret:
+            return ret
+        else:
+            # phrase inference use translation model
+            return
+    
+    def word_phrase_dc_phonetic(self, word) -> str:
+        result = self.dc_dict(word)
+        ret = result.get('phonetic', None)
+        if ret:
+            return ret
+        else:
+            # phrase inference use g2p or phonemizer
+            return
+
     def ipa_dict(self, word, normalized = True, to_phones = False, take_first = True) -> str:
         self.load_cmudict_ipa()
         phonetics = self.cmudict_ipa.get(word, None)
@@ -365,6 +416,7 @@ class Phonetic(object):
             return ret, ret.split(' ')
 
 def main():
+    os.environ['PHONEMIZER_ESPEAK_LIBRARY'] = '/opt/homebrew/Cellar/espeak/1.48.04_1/lib/libespeak.dylib'
     phonetic = Phonetic()
     phonetic.load_letter_ipa_dict()
 
@@ -372,13 +424,15 @@ def main():
     words0 = ["2"]
     words1 = ["about", "through", "rough", "cough", "content", "ought", "magazine", "hurt", "but", "accept", "talked", "bananas", "wishes", "OPPO"]
     words2 = ['suburban', 'kit', 'odd', 'outstanding', 'geology', 'ZZ', 'dashing', "good", 'longtimenosee', 'phoneme']
-    words3 = ['vocabulary', 'algorithm', 'thorough', 'gather', 'metal', 'pull', 'Toronto', 'hot', 'heart']
+    words3 = ['vocabulary', 'algorithm', 'thorough', 'gathering', 'metal', 'pull', 'Toronto', 'hot', 'heart']
     words4 = ['rear', 'bear', 'tour', 'cats', 'tree', 'dog', 'dream', 'beds', 'brother', 'oat']
-    words = words0 + words1 + words2 + words3
+    words = words1 + words2 + words3
     # ɑːd dɒɡ hɑːt a hɑːrt
     # words = words4
     # words = ['about']
     for word in words:
+        s0 = phonetic.word_phrase_translation(word)
+        s0_0 = phonetic.word_phrase_dc_phonetic(word)
         s1 = phonetic.ipa_dict(word)
         s1_1 = phonetic.ipa_dict(word, True, True)
         s4 = phonetic.plain_dict(word)
@@ -387,7 +441,9 @@ def main():
         s3 = phonetic.g2p_ex(word)
         s3_1 = phonetic.g2p_ex(word, False)
         
-        print(word, s2, s3)
+        print(word, s2, s3, s0_0)
+        print(s0)
+        print()
         # print(s2_1)
         # print(s3_1)
         # print(word, s2, s3, s1, s4)
