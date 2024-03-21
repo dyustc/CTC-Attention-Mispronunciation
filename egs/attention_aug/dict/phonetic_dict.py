@@ -180,6 +180,37 @@ class Phonetic(object):
         result = self.dc_dict(word)
         return result.get('phonetic', None)
 
+    def _stress_normalize(self, phonetic : str) -> str:
+        # change 1st stress position
+        index = phonetic.find('ˈ')
+        
+        if index == -1:
+            pass
+        elif index == 0:
+            phonetic = phonetic[1:]
+        elif index == len(phonetic) - 1: # last stress
+            phonetic = phonetic[:index]
+        else:
+            is_first_vowel = True
+            for p in self.ipa_vowel_phones:
+                if p in phonetic[:index]:
+                    is_first_vowel = False
+                    break
+            
+            if is_first_vowel:
+                phonetic = phonetic[:index] + phonetic[index+1:]
+            else:
+                if phonetic[index-1] in self.ipa_vowel_phones:
+                    pass
+                elif index-2 >= 0 and phonetic[index-2:index] in self.ipa_vowel_phones:
+                    pass
+                elif index-2 >= 0 and phonetic[index-2:index] == 'st':
+                    phonetic = phonetic[:index-2] + 'ˈ'  + 'st' + phonetic[index+1:]
+                else:
+                    phonetic = phonetic[:index-1] + 'ˈ'  + phonetic[index-1] + phonetic[index+1:]
+        
+        return phonetic
+
     def _ipa_phonemizer_normalized(self, phonetic : str, style = 'us') -> str:
         phonetic = phonetic.replace('ɹ', 'r')
         phonetic = phonetic.replace('ɚr', 'ər')
@@ -205,31 +236,8 @@ class Phonetic(object):
         # remove 2nd stress ˌ
         phonetic = phonetic.replace('ˌ', '')
 
-        # change 1st stress position
-        index = phonetic.find('ˈ')
-        if index == -1:
-            pass
-        elif index == 0:
-            phonetic = phonetic[1:]
-        else:
-            is_first_vowel = True
-            for p in self.ipa_vowel_phones:
-                if p in phonetic[:index]:
-                    is_first_vowel = False
-                    break
-            
-            if is_first_vowel:
-                phonetic = phonetic[:index] + phonetic[index+1:]
-            else:
-                if phonetic[index-1] in self.ipa_vowel_phones:
-                    pass
-                elif index-2 >= 0 and phonetic[index-2:index] in self.ipa_vowel_phones:
-                    pass
-                elif index-2 >= 0 and phonetic[index-2:index] == 'st':
-                    phonetic = phonetic[:index-2] + 'ˈ'  + 'st' + phonetic[index+1:]
-                else:
-                    phonetic = phonetic[:index-1] + 'ˈ'  + phonetic[index-1] + phonetic[index+1:]
-    
+        phonetic = self._stress_normalize(phonetic)
+        
         return phonetic
 
     def _ipa_to_phones39(self, phonetic : str) -> List[str]:
@@ -343,11 +351,11 @@ class Phonetic(object):
         if to_phones:
             phones = self._ipa_to_phones39(phonetic)
             return " ".join(phones)
-
-        if normalized:
-            return self._ipa_phonemizer_normalized(phonetic, style)
         else:
-            return phonetic
+            if normalized:
+                return self._ipa_phonemizer_normalized(phonetic, style)
+            else:
+                return phonetic
 
     def api_word_phonemizer(self, word) -> str:
         phonetic_us = self.phonemizer(word, 'us')
@@ -355,22 +363,20 @@ class Phonetic(object):
         ret = '英: /' + phonetic_br + '/ ' + '美: /' + phonetic_us + '/ '
         return ret
 
-    def phonemizer_sentence(self, text, to_phones = False, normalized = True) -> str:
-        phonetic = self.backend.phonemize([text])[0]
-        phonetic = phonetic.strip()
+    def phonemizer_phrase_sentence(self, text, style='us') -> str:
+        phonetic = self.phonemizer(text, style, True, False)
         
-        if to_phones:
-            phonetics = phonetic.split(' ')
-            phones = [self._ipa_to_phones39(p) for p in phonetics]
-            full_phones = list()
-            for p in phones:
-                # TODO: better formatting
-                full_phones = full_phones + p + [" "]
-            return " ".join(full_phones), phones
+        parts = phonetic.split(' ')
+        phonetic = ' '.join([self._stress_normalize(p) for p in parts])
 
-        if normalized:
-            phonetics = [self._ipa_phonemizer_normalized(p) for p in phonetic.split(' ')]
-            return ' '.join(phonetics)
+        return phonetic
+
+    def api_phrase_sentence_phonemizer(self, text) -> str:
+        phonetic_us = self.phonemizer_phrase_sentence(text, 'us')
+        phonetic_br = self.phonemizer_phrase_sentence(text, 'br')
+
+        ret = '英: /' + phonetic_br + '/ ' + '美: /' + phonetic_us + '/ '
+        return ret
 
     def cmu_dict(self, word, take_first = True, to_ipa = False) -> str:
         self.load_cmudict()
@@ -415,26 +421,33 @@ def main():
     words2 = ['suburban', 'kit', 'odd', 'outstanding', 'geology', 'ZZ', 'dashing', "good", 'longtimenosee', 'phoneme']
     words3 = ['vocabulary', 'algorithm', 'thorough', 'gathering', 'metal', 'pull', 'Toronto', 'hot', 'heart', 'mark', 'astronaut', 'ideal']
     words4 = ['rear', 'bear', 'tour', 'cat', 'tree', 'dog', 'dream', 'beds', 'brother', 'oat']
-    words = words1 + words2 + words3 + words4
-    # words = ['about']
-    words = words0 + words1 + words2 + words3 + words4
-    # words = ['about']
-    # ɑːd dɒɡ hɑːt a hɑːrt
-    # words = words4
-    # words = ['about']
+    words5 = ['jffsosejfi']
+
+    words = words0 + words1 + words2 + words3 + words4 + words5
+    phrases = ["make up", "pass for something", "the apple of my eye", "get away with"]
+
+    for phrase in phrases:
+        # s1 = phonetic.phonemizer_phrase_sentence(phrase, 'us')
+        # s2 = phonetic.phonemizer_phrase_sentence(phrase, 'br')
+
+        s = phonetic.api_phrase_sentence_phonemizer(phrase)
+        # print(phrase, s1, s2)
+        print(phrase, s)
+        print()
+    # exit()
     for word in words:
-        s0 = phonetic.dc_dict_translation(word)
-        s1 = phonetic.dc_dict_phonetic(word)
-        s2 = phonetic.ipa_dict(word)
-        s4_1 = phonetic.phonemizer(word, 'us',)
-        s4_2 = phonetic.phonemizer(word, 'br',)
-        s3 = phonetic.cmu_dict(word)
-        s5 = phonetic.g2p(word)
+        # s0 = phonetic.dc_dict_translation(word)
+        # s1 = phonetic.dc_dict_phonetic(word)
+        # s2 = phonetic.ipa_dict(word)
+        # s4_1 = phonetic.phonemizer(word, 'us')
+        # s4_2 = phonetic.phonemizer(word, 'br')
+        # s3 = phonetic.cmu_dict(word)
+        # s5 = phonetic.g2p(word)
         
         syllables = phonetic.api_word_phonemizer(word)
         
         # print(word, s1, s2, s3, s4_2, s4_1, s5)
-        print(word, s4_2, s4_1)
+        # print(word, s4_2, s4_1)
         print(word, syllables)
         # print(s0)
         print()
@@ -458,9 +471,9 @@ def main():
     ] # newly coined word
     for sentence in texts:
         print(sentence)
-        print(phonetic.phonemizer_sentence(sentence))
-        print(phonetic.phonemizer_sentence(sentence, True, False))
-        print(phonetic.g2p(sentence, False))
+        print(phonetic.api_phrase_sentence_phonemizer(sentence))
+        # print(phonetic.phonemizer_sentence(sentence, True, False))
+        # print(phonetic.g2p(sentence, False))
         print("")
         # print(phonetic.g2p(sentence, False))
     
