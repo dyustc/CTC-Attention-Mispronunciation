@@ -15,7 +15,6 @@ from stardict import DictCsv
 class Phonetic(object):
     def __init__(self) -> None:
         self.cmu_to_ipa_wiki = {
-            # TODO: ɒ vs ɑ ɑːd dɒɡ hɑːt a hɑːrt
             "AA" : 'a',
             'AE' : 'æ',
             'AH0' : 'ə',
@@ -59,18 +58,11 @@ class Phonetic(object):
             'ZH' : 'ʒ'
         }
 
-        self.cmu_to_ipa = {
-            "a": "ə", "ey": "eɪ", "aa": "ɑ", "ae": "æ", "ah": "ə", "ao": "ɔ",
-            "aw": "aʊ", "ay": "aɪ", "ch": "ʧ", "dh": "ð", "eh": "ɛ", "er": "ər",
-            "hh": "h", "ih": "ɪ", "jh": "ʤ", "ng": "ŋ",  "ow": "oʊ", "oy": "ɔɪ",
-            "sh": "ʃ", "th": "θ", "uh": "ʊ", "uw": "u", "zh": "ʒ", "iy": "i", "y": "j"
-        }
-        
         self.ipa_to_cmu_wiki = {}
 
         for k, v in self.cmu_to_ipa_wiki.items():
             self.ipa_to_cmu_wiki[v] = k
-        self.ipa_to_cmu_wiki['ɜ'] = 'ER'
+        # self.ipa_to_cmu_wiki['ɜ'] = 'ER'
 
         self.cmu_phones = list(self.cmu_to_ipa_wiki.keys())
         self.cmu_phones.remove('AH0')
@@ -80,9 +72,10 @@ class Phonetic(object):
             'ER', 'EY', 'IH', 'IY', 'OW', 'OY', 'UH', 'UW']
 
         self.cmu_consonant_phones = [
-            'B', 'CH', 'D', 'DH', 'F', 'G', 'HH', 'JH', 'K', 'L', 'M', 
-            'N', 'NG', 'P', 'R', 'S', 'SH', 'T', 'TH', 'V', 'W', 'Y', 
-            'Z', 'ZH']
+            'B', 'CH', 'D', 'DH', 'F', 'G', 'HH', 'JH', 
+            'K', 'L', 'M', 'N', 'NG', 'P', 'R', 'S', 
+            'SH', 'T', 'TH', 'V', 'W', 'Y', 'Z', 'ZH'
+            ]
 
         self.ipa_vowel_phones = []
 
@@ -100,8 +93,9 @@ class Phonetic(object):
         self.letter_ipa_dict = {}
         self.dc = {}
 
-        self.g2p = G2p()
-        self.backend = EspeakBackend('en-us', with_stress = True)
+        self.g2p_backend = G2p()
+        self.backend_us = EspeakBackend('en-us', with_stress = True)
+        self.backend_br = EspeakBackend('en', with_stress = True)
 
     def load_ecdict(self, reload = False) -> None:
         if self.dc.__len__() == 0 or reload:
@@ -110,7 +104,7 @@ class Phonetic(object):
         
         return
    
-    def load_cmudict_ipa(self, reload = False) -> None:
+    def load_ipadict(self, reload = False) -> None:
         if self.cmudict_ipa.__len__() == 0 or reload:
             # init cmu ipa dict
             with open('./cmudict-0.7b-ipa.txt', 'r') as f:
@@ -126,7 +120,7 @@ class Phonetic(object):
     
         return 
 
-    def load_cmudict_plain(self, reload = False) -> None:
+    def load_cmudict(self, reload = False) -> None:
         if self.cmudict_plain.__len__() == 0 or reload:
             with open('./cmudict.dict', 'r') as f:
                 lines = f.readlines()
@@ -158,17 +152,6 @@ class Phonetic(object):
                         'mapping' : mapping
                     }
         return
-                
-    def check_phone_map(self) -> None:
-        for phone in self.cmu_phones:
-            if phone not in self.cmu_to_ipa_wiki:
-                print(phone)
-
-            p1 = self.cmu_to_ipa.get(phone.lower(), phone.lower())
-            p2 = self.cmu_to_ipa_wiki.get(phone, phone.lower())
-
-            if p1 != p2:
-                print(phone, p1, p2)
     
     def dc_dict(self, word) -> dict:
         self.load_ecdict()
@@ -189,90 +172,13 @@ class Phonetic(object):
         else:
             return result
 
-    def word_phrase_translation(self, word) -> str:
+    def dc_dict_translation(self, word) -> str:
         result = self.dc_dict(word)
-        ret = result.get('translation', None)
-        if ret:
-            return ret
-        else:
-            # phrase inference use translation model
-            return
+        return result.get('translation', None)
     
-    def word_phrase_dc_phonetic(self, word) -> str:
+    def dc_dict_phonetic(self, word) -> str:
         result = self.dc_dict(word)
-        ret = result.get('phonetic', None)
-        if ret:
-            return ret
-        else:
-            # phrase inference use g2p or phonemizer
-            return
-
-    def ipa_dict(self, word, normalized = True, to_phones = False, take_first = True) -> str:
-        self.load_cmudict_ipa()
-        phonetics = self.cmudict_ipa.get(word, None)
-        
-        if take_first:
-            index = 0
-        
-        if phonetics:
-            phonetic = phonetics[index]
-            
-            phonetic = phonetic.replace('ɝ', 'ɜ')
-            phonetic = phonetic.replace('ˌ', '')
-
-            if to_phones:
-                # FIXME: stress position if different from phonemizer
-                phones = self._ipa_to_phones39(phonetic)
-                return " ".join(phones)
-
-            if normalized:
-                return phonetic
-        else:
-            return self.phonemizer(word, to_phones, normalized)
-
-    def plain_dict(self, word, to_ipa = True, stress = True, take_first = True) -> str:
-        self.load_cmudict_plain()
-        phones = self.cmudict_plain.get(word, None)
-        
-        if phones:
-            if to_ipa:
-                phones = self._phones39_to_ipa(phones, stress)
-                return "".join(phones)
-            else:
-                return " ".join(phones)
-        else:
-            return self.g2p_ex(word, to_ipa, stress)
-
-    def _phones39_to_ipa(self, phones: List[str], stress: bool = True) -> List[str]:
-        if stress:
-            vowels = [(i, p) for i, p in enumerate(phones) if p not in self.cmu_consonant_phones]
-
-            if not vowels:
-                pass
-            else:
-                i = 0
-                while i < len(vowels):
-                    if vowels[i][1][2] == '1':
-                        break
-                    i += 1
-            
-                if i == 0:
-                    pass
-                else:
-                    index = vowels[i][0] - 1
-                    
-                    # add stress
-                    if phones[index] == 'T' and index - 1 >= 0 and phones[index-1] == 'S':
-                        phones.insert(index-1, 'ˈ')
-                    elif phones[index].rstrip(string.digits) in self.cmu_vowel_phones:
-                        phones.insert(index+1, 'ˈ')
-                    else:
-                        phones.insert(index, 'ˈ')
-       
-        phones = [p.rstrip(string.digits)  if p != 'AH0' else p for p in phones]
-        phones = [self.cmu_to_ipa_wiki.get(p, p) for p in phones]
-    
-        return phones
+        return result.get('phonetic', None)
 
     def _ipa_phonemizer_normalized(self, phonetic : str) -> str:
         phonetic = phonetic.replace('ɹ', 'r')
@@ -285,6 +191,8 @@ class Phonetic(object):
         phonetic = phonetic.replace('ɡ', 'g')
         phonetic = phonetic.replace('ɑ', 'a')
         phonetic = phonetic.replace('ɾ', 't')
+        phonetic = phonetic.replace('ɝ', 'ɜ')
+        phonetic = phonetic.replace('iə', 'ɪə')
 
         # remove 2nd stress ˌ
         phonetic = phonetic.replace('ˌ', '')
@@ -367,8 +275,61 @@ class Phonetic(object):
 
         return phones
 
-    def phonemizer(self, word, to_phones = False, normalized = True) -> str:
-        phonetic = self.backend.phonemize([word])[0]
+    def _phones39_to_ipa(self, phones: List[str], stress: bool = True) -> List[str]:
+        if stress:
+            vowels = [(i, p) for i, p in enumerate(phones) if p not in self.cmu_consonant_phones]
+
+            if not vowels:
+                pass
+            else:
+                i = 0
+                while i < len(vowels):
+                    if vowels[i][1][2] == '1':
+                        break
+                    i += 1
+            
+                if i == 0:
+                    pass
+                else:
+                    index = vowels[i][0] - 1
+                    
+                    # add stress
+                    if phones[index] == 'T' and index - 1 >= 0 and phones[index-1] == 'S':
+                        phones.insert(index-1, 'ˈ')
+                    elif phones[index].rstrip(string.digits) in self.cmu_vowel_phones:
+                        phones.insert(index+1, 'ˈ')
+                    else:
+                        phones.insert(index, 'ˈ')
+       
+        phones = [p.rstrip(string.digits)  if p != 'AH0' else p for p in phones]
+        phones = [self.cmu_to_ipa_wiki.get(p, p) for p in phones]
+    
+        return phones
+
+    def ipa_dict(self, word, index = 0) -> str:
+        self.load_ipadict()
+        phonetics = self.cmudict_ipa.get(word, None)
+                
+        if phonetics:
+            if index >= len(phonetics):
+                message = f"Word {word} only found {len(phonetics)} in dictionary."
+                warnings.warn(message)
+                index = 0
+        
+            phonetic = phonetics[index]
+
+            return phonetic
+        else:
+            return None
+
+    def phonemizer(self, word, style = 'us', normalized = True, to_phones = False) -> str:
+        assert style in ['us', 'br']
+        if style == 'us':
+            backend = self.backend_us
+        else:
+            backend = self.backend_br
+        
+        phonetic = backend.phonemize([word])[0]
         phonetic = phonetic.strip()
 
         if to_phones:
@@ -377,16 +338,8 @@ class Phonetic(object):
 
         if normalized:
             return self._ipa_phonemizer_normalized(phonetic)
-
-    def g2p_ex(self, word, to_ipa = True, stress = True) -> str:
-        phones = self.g2p(word)
-        # print(phones)
-        
-        if to_ipa:
-            phones = self._phones39_to_ipa(phones, stress)
-            return "".join(phones)
         else:
-            return " ".join(phones)
+            return phonetic
 
     def phonemizer_sentence(self, text, to_phones = False, normalized = True) -> str:
         phonetic = self.backend.phonemize([text])[0]
@@ -405,14 +358,36 @@ class Phonetic(object):
             phonetics = [self._ipa_phonemizer_normalized(p) for p in phonetic.split(' ')]
             return ' '.join(phonetics)
 
-    def g2p_ex_sentence(self, text, to_phones = False, normalized = True) -> str:
+    def cmu_dict(self, word, take_first = True, to_ipa = False) -> str:
+        self.load_cmudict()
+        phones = self.cmudict_plain.get(word, None)
+        
+        if phones:
+            if not to_ipa:
+                return " ".join(phones)
+            else:
+                phones = self._phones39_to_ipa(phones, True)
+                return "".join(phones)   
+        else:
+            return None
+
+    def g2p(self, word, to_ipa = False) -> str:
+        phones = self.g2p_backend(word)
+        
+        if to_ipa:
+            phones = self._phones39_to_ipa(phones, True)
+            return "".join(phones)
+        else:
+            return " ".join(phones)
+
+    def g2p_sentence(self, text, to_phones = False, normalized = True) -> str:
         to_ipa = True if not to_phones else False
         stress = True if normalized else False
         
         if to_ipa:
-            return self.g2p_ex(text, to_ipa, stress)
+            return self.g2p(text, to_ipa, stress)
         else:
-            ret = self.g2p_ex(text, to_ipa, stress)
+            ret = self.g2p(text, to_ipa, stress)
             return ret, ret.split(' ')
 
 def main():
@@ -422,27 +397,26 @@ def main():
 
     # word
     words0 = ["2"]
-    words1 = ["about", "through", "rough", "cough", "content", "ought", "magazine", "hurt", "but", "accept", "talked", "bananas", "wishes", "OPPO"]
+    words1 = ["apple", "about", "through", "rough", "cough", "content", "ought", "magazine", "hurt", "but", "accept", "talked", "bananas", "wishes", "OPPO"]
     words2 = ['suburban', 'kit', 'odd', 'outstanding', 'geology', 'ZZ', 'dashing', "good", 'longtimenosee', 'phoneme']
-    words3 = ['vocabulary', 'algorithm', 'thorough', 'gathering', 'metal', 'pull', 'Toronto', 'hot', 'heart']
-    words4 = ['rear', 'bear', 'tour', 'cats', 'tree', 'dog', 'dream', 'beds', 'brother', 'oat']
-    words = words1 + words2 + words3
+    words3 = ['vocabulary', 'algorithm', 'thorough', 'gathering', 'metal', 'pull', 'Toronto', 'hot', 'heart', 'mark', 'astronaut']
+    words4 = ['rear', 'bear', 'tour', 'cat', 'tree', 'dog', 'dream', 'beds', 'brother', 'oat']
+    words = words1 + words2 + words3 + words4
     # ɑːd dɒɡ hɑːt a hɑːrt
     # words = words4
     # words = ['about']
     for word in words:
-        s0 = phonetic.word_phrase_translation(word)
-        s0_0 = phonetic.word_phrase_dc_phonetic(word)
-        s1 = phonetic.ipa_dict(word)
-        s1_1 = phonetic.ipa_dict(word, True, True)
-        s4 = phonetic.plain_dict(word)
-        s2 = phonetic.phonemizer(word)
-        s2_1 = phonetic.phonemizer(word, True)
-        s3 = phonetic.g2p_ex(word)
-        s3_1 = phonetic.g2p_ex(word, False)
+        s0 = phonetic.dc_dict_translation(word)
+        s1 = phonetic.dc_dict_phonetic(word)
+        s2 = phonetic.ipa_dict(word)
+        s4_1 = phonetic.phonemizer(word, 'us',)
+        s4_2 = phonetic.phonemizer(word, 'br',)
+        s3 = phonetic.cmu_dict(word)
+        s5 = phonetic.g2p(word)
         
-        print(word, s2, s3, s0_0)
-        print(s0)
+        # print(word, s1, s2, s3, s4_2, s4_1, s5)
+        print(word, s4_2, s4_1, s1, s2)
+        # print(s0)
         print()
         # print(s2_1)
         # print(s3_1)
@@ -466,15 +440,15 @@ def main():
         print(sentence)
         print(phonetic.phonemizer_sentence(sentence))
         print(phonetic.phonemizer_sentence(sentence, True, False))
-        print(phonetic.g2p_ex(sentence, False))
+        print(phonetic.g2p(sentence, False))
         print("")
-        # print(phonetic.g2p_ex(sentence, False))
+        # print(phonetic.g2p(sentence, False))
     
 if __name__ == '__main__':
     sys.exit(main())
 
 
-# from g2p import make_g2p
+# from g2p_backend import make_g2p
 # transducer = make_g2p('dan', 'eng-arpabet')
 
 # Use a pipeline as a high-level helper
