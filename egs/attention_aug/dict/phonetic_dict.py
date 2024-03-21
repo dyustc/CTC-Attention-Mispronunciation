@@ -180,7 +180,7 @@ class Phonetic(object):
         result = self.dc_dict(word)
         return result.get('phonetic', None)
 
-    def _ipa_phonemizer_normalized(self, phonetic : str) -> str:
+    def _ipa_phonemizer_normalized(self, phonetic : str, style = 'us') -> str:
         phonetic = phonetic.replace('ɹ', 'r')
         phonetic = phonetic.replace('ɚr', 'ər')
         phonetic = phonetic.replace('ɚˈr', 'ər')
@@ -189,7 +189,15 @@ class Phonetic(object):
         phonetic = phonetic.replace('ɐ', 'ə')
         phonetic = phonetic.replace('ᵻ', 'ɪ')
         phonetic = phonetic.replace('ɡ', 'g')
-        phonetic = phonetic.replace('ɑ', 'a')
+        
+        if style == 'us':
+            phonetic = phonetic.replace('ɑ', 'a')
+        elif style == 'br':
+            phonetic = phonetic.replace('a', 'æ')
+            phonetic = phonetic.replace('æʊ', 'aʊ')
+            phonetic = phonetic.replace('æɪ', 'aɪ')
+            phonetic = phonetic.replace('ɑ', 'a')
+    
         phonetic = phonetic.replace('ɾ', 't')
         phonetic = phonetic.replace('ɝ', 'ɜ')
         phonetic = phonetic.replace('iə', 'ɪə')
@@ -305,7 +313,7 @@ class Phonetic(object):
         phones = [self.cmu_to_ipa_wiki.get(p, p) for p in phones]
     
         return phones
-
+    
     def ipa_dict(self, word, index = 0) -> str:
         self.load_ipadict()
         phonetics = self.cmudict_ipa.get(word, None)
@@ -337,9 +345,15 @@ class Phonetic(object):
             return " ".join(phones)
 
         if normalized:
-            return self._ipa_phonemizer_normalized(phonetic)
+            return self._ipa_phonemizer_normalized(phonetic, style)
         else:
             return phonetic
+
+    def api_word_phonemizer(self, word) -> str:
+        phonetic_us = self.phonemizer(word, 'us')
+        phonetic_br = self.phonemizer(word, 'br')
+        ret = '英: /' + phonetic_br + '/ ' + '美: /' + phonetic_us + '/ '
+        return ret
 
     def phonemizer_sentence(self, text, to_phones = False, normalized = True) -> str:
         phonetic = self.backend.phonemize([text])[0]
@@ -399,9 +413,12 @@ def main():
     words0 = ["2"]
     words1 = ["apple", "about", "through", "rough", "cough", "content", "ought", "magazine", "hurt", "but", "accept", "talked", "bananas", "wishes", "OPPO"]
     words2 = ['suburban', 'kit', 'odd', 'outstanding', 'geology', 'ZZ', 'dashing', "good", 'longtimenosee', 'phoneme']
-    words3 = ['vocabulary', 'algorithm', 'thorough', 'gathering', 'metal', 'pull', 'Toronto', 'hot', 'heart', 'mark', 'astronaut']
+    words3 = ['vocabulary', 'algorithm', 'thorough', 'gathering', 'metal', 'pull', 'Toronto', 'hot', 'heart', 'mark', 'astronaut', 'ideal']
     words4 = ['rear', 'bear', 'tour', 'cat', 'tree', 'dog', 'dream', 'beds', 'brother', 'oat']
     words = words1 + words2 + words3 + words4
+    # words = ['about']
+    words = words0 + words1 + words2 + words3 + words4
+    # words = ['about']
     # ɑːd dɒɡ hɑːt a hɑːrt
     # words = words4
     # words = ['about']
@@ -414,8 +431,11 @@ def main():
         s3 = phonetic.cmu_dict(word)
         s5 = phonetic.g2p(word)
         
+        syllables = phonetic.api_word_phonemizer(word)
+        
         # print(word, s1, s2, s3, s4_2, s4_1, s5)
-        print(word, s4_2, s4_1, s1, s2)
+        print(word, s4_2, s4_1)
+        print(word, syllables)
         # print(s0)
         print()
         # print(s2_1)
