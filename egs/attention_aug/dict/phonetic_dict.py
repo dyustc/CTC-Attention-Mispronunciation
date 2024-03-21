@@ -172,13 +172,70 @@ class Phonetic(object):
         else:
             return result
 
-    def dc_dict_translation(self, word) -> str:
+    def dc_dict_word_translation(self, word) -> str:
         result = self.dc_dict(word)
-        return result.get('translation', None)
+        texts = result.get('translation', '')
+
+        if not texts:
+            return ''
+        
+        text = texts.split('\n')
+        
+        first_classes = [
+            'n.', 'v.', 'vt.', 'vi.', 'a.', 'adj.', 
+            'adv.', 'prep.', 'conj.', 'pron.',  'num.'
+        ]
+        
+        second_classes = [
+            'art.', 'int.', 'abbr.', 'aux.', 'modal.', 
+            'phr.', 'idiom.'
+        ]
+        
+        classes = first_classes + second_classes
+        filtered_texts = []
+        for t in text:
+            c = t.split(' ')[0]
+            if c in first_classes:
+                if c == 'a.':
+                    filtered_texts.append('adj.' + t[2:])
+                else:
+                    filtered_texts.append(t)
+        
+        if not filtered_texts:
+            extra_info = result.get('exchange', None)
+            if extra_info:
+                infos = extra_info.split('/')
+                parent = None
+                for info in infos:
+                    if info[:2] == '0:':
+                        parent = info[2:]
+                        break
+                if not parent:
+                    pass
+                else:
+                    return self.dc_dict_word_translation(parent)
+
+        texts = '\n'.join(filtered_texts)
+        
+        return texts
+    
+    def dc_dict_phrase_translation(self, phrase) -> str:
+        result = self.dc_dict(phrase)
+        return result.get('translation', '')
     
     def dc_dict_phonetic(self, word) -> str:
         result = self.dc_dict(word)
         return result.get('phonetic', None)
+
+    def api_word_translation(self, word) -> str:
+        translation = self.dc_dict_word_translation(word)
+        return translation
+    
+    def api_phrase_sentence_translation(self, text) -> str:
+        translation = self.dc_dict_phrase_translation(text)
+        return translation
+    
+    # TODO: update ecdict to fix or update meaning of words or phrases
 
     def _stress_normalize(self, phonetic : str) -> str:
         # change 1st stress position
@@ -417,20 +474,21 @@ def main():
     words4 = ['rear', 'bear', 'tour', 'cat', 'tree', 'dog', 'dream', 'beds', 'brother', 'oat']
     words5 = ['jffsosejfi']
 
-    words = words0 + words1 + words2 + words3 + words4 + words5
+    words6 = ['cat', 'cats', 'kit', 'kits']
+    words7 = ['talk', 'talks', 'talked', 'talking']
+    words8 = ['good', 'goods', 'better', 'best']
+    words9 = ['in', 'outstanding', 'odd', 'odds']
+    words10 = ['two']
+    words11 = ['tjjdjfporflker']
+
+    # words = words0 + words1 + words2 + words3 + words4 + words5
+    words = words6 + words7 + words8 + words9 + words10 + words11
+    # words = ['cat']
     phrases = ["make up", "pass for something", "the apple of my eye", "get away with"]
 
-    for phrase in phrases:
-        # s1 = phonetic.phonemizer_phrase_sentence(phrase, 'us')
-        # s2 = phonetic.phonemizer_phrase_sentence(phrase, 'br')
-
-        s = phonetic.api_phrase_sentence_phonetic(phrase)
-        # print(phrase, s1, s2)
-        print(phrase, s)
-        print()
     # exit()
     for word in words:
-        # s0 = phonetic.dc_dict_translation(word)
+        s0 = phonetic.api_word_translation(word)
         # s1 = phonetic.dc_dict_phonetic(word)
         # s2 = phonetic.ipa_dict(word)
         # s4_1 = phonetic.phonemizer(word, 'us')
@@ -443,7 +501,7 @@ def main():
         # print(word, s1, s2, s3, s4_2, s4_1, s5)
         # print(word, s4_2, s4_1)
         print(word, syllables)
-        # print(s0)
+        print(s0)
         print()
         # print(s2_1)
         # print(s3_1)
@@ -452,6 +510,16 @@ def main():
         # print(s2_1)
         # print(s3_1)
         # print(word, s1, s2, s3, s4, s1 == s2)
+    # exit()
+    for phrase in phrases:
+        # s1 = phonetic.phonemizer_phrase_sentence(phrase, 'us')
+        # s2 = phonetic.phonemizer_phrase_sentence(phrase, 'br')
+        s = phonetic.api_phrase_sentence_phonetic(phrase)
+        s0 = phonetic.api_phrase_sentence_translation(phrase)
+        # print(phrase, s1, s2)
+        print(phrase, s)
+        print(s0)
+        print()
     exit()
     #sentence
     texts = [
