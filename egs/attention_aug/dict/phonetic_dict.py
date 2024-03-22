@@ -14,6 +14,7 @@ from stardict import DictCsv
 
 class Phonetic(object):
     def __init__(self) -> None:
+        # This ipa mapping is done as the us syllable way.
         self.cmu_to_ipa_wiki = {
             "AA" : 'a',
             'AE' : 'æ',
@@ -153,10 +154,10 @@ class Phonetic(object):
                     }
         return
     
-    def dc_dict(self, word) -> dict:
+    def dc_dict(self, text) -> dict:
         self.load_ecdict()
-
-        result = self.dc.query(word.lower())
+        text = text.strip()
+        result = self.dc.query(text.lower())
         # fields = [
         #     'word', 
         #     'translation', 
@@ -166,7 +167,11 @@ class Phonetic(object):
         #     ]
 
         if result is None or not result.get('translation', None):
-            message = f"Word {word} not found in dictionary."
+            parts = text.split(' ')
+            text_type = 'WORD'
+            if len(parts) > 1:
+                text_type = 'PHRASE'
+            message = f"{text_type} '{text}' not found in dictionary."
             warnings.warn(message)
             return {}
         else:
@@ -175,10 +180,9 @@ class Phonetic(object):
     def dc_dict_word_translation(self, word) -> str:
         result = self.dc_dict(word)
         texts = result.get('translation', '')
-
         if not texts:
             return ''
-        
+       
         text = texts.split('\n')
         
         first_classes = [
@@ -214,9 +218,12 @@ class Phonetic(object):
                     pass
                 else:
                     return self.dc_dict_word_translation(parent)
-
-        texts = '\n'.join(filtered_texts)
         
+        if filtered_texts:
+            texts = '\n'.join(filtered_texts)
+        
+        texts = texts.strip()
+
         return texts
     
     def dc_dict_phrase_translation(self, phrase) -> str:
@@ -229,11 +236,21 @@ class Phonetic(object):
 
     def api_word_translation(self, word) -> str:
         translation = self.dc_dict_word_translation(word)
+        if not translation:
+            # use translation model
+            pass
         return translation
     
-    def api_phrase_sentence_translation(self, text) -> str:
-        translation = self.dc_dict_phrase_translation(text)
+    def api_phrase_translation(self, phrase) -> str:
+        translation = self.dc_dict_phrase_translation(phrase)
+        if not translation:
+            # use translation model
+            pass
         return translation
+    
+    def api_sentence_translation(self, sentence) -> str:
+        # use translation model
+        return 
     
     # TODO: update ecdict to fix or update meaning of words or phrases
 
@@ -292,7 +309,7 @@ class Phonetic(object):
 
         return phonetic
 
-    def _ipa_phonemizer_normalized(self, phonetic : str, style = 'us') -> str:
+    def _ipa_phonemizer_normalize(self, phonetic : str, style = 'us') -> str:
         phonetic = self._character_normalize(phonetic, style)
 
         # remove 2nd stress ˌ
@@ -407,13 +424,7 @@ class Phonetic(object):
             phones = self._ipa_to_phones39(phonetic)
             return " ".join(phones)
         else:
-            return self._ipa_phonemizer_normalized(phonetic, style)
-
-    def api_word_phonetic(self, word) -> str:
-        phonetic_us = self.phonemizer(word, 'us')
-        phonetic_br = self.phonemizer(word, 'br')
-        ret = '英: /' + phonetic_br + '/ ' + '美: /' + phonetic_us + '/ '
-        return ret
+            return self._ipa_phonemizer_normalize(phonetic, style)
 
     def phonemizer_phrase_sentence(self, text, style='us') -> str:
         phonetic = self.phonemizer(text, style, False)
@@ -422,13 +433,6 @@ class Phonetic(object):
         phonetic = ' '.join([self._stress_normalize(p) for p in parts])
 
         return phonetic
-
-    def api_phrase_sentence_phonetic(self, text) -> str:
-        phonetic_us = self.phonemizer_phrase_sentence(text, 'us')
-        phonetic_br = self.phonemizer_phrase_sentence(text, 'br')
-
-        ret = '英: /' + phonetic_br + '/ ' + '美: /' + phonetic_us + '/ '
-        return ret
 
     def cmu_dict(self, word, to_ipa = False) -> str:
         self.load_cmudict()
@@ -461,6 +465,19 @@ class Phonetic(object):
             ret = self.g2p(text, to_ipa, stress)
             return ret, ret.split(' ')
 
+    def api_word_phonetic(self, word) -> str:
+        phonetic_us = self.phonemizer(word, 'us')
+        phonetic_br = self.phonemizer(word, 'br')
+        ret = '英: /' + phonetic_br + '/ ' + '美: /' + phonetic_us + '/ '
+        return ret
+
+    def api_phrase_sentence_phonetic(self, text) -> str:
+        phonetic_us = self.phonemizer_phrase_sentence(text, 'us')
+        phonetic_br = self.phonemizer_phrase_sentence(text, 'br')
+
+        ret = '英: /' + phonetic_br + '/ ' + '美: /' + phonetic_us + '/ '
+        return ret
+
 def main():
     os.environ['PHONEMIZER_ESPEAK_LIBRARY'] = '/opt/homebrew/Cellar/espeak/1.48.04_1/lib/libespeak.dylib'
     phonetic = Phonetic()
@@ -474,21 +491,21 @@ def main():
     words4 = ['rear', 'bear', 'tour', 'cat', 'tree', 'dog', 'dream', 'beds', 'brother', 'oat']
     words5 = ['jffsosejfi']
 
-    words6 = ['cat', 'cats', 'kit', 'kits']
+    words6 = ['cat', 'cats', 'kit', 'kits', 'ate', 'eat']
     words7 = ['talk', 'talks', 'talked', 'talking']
     words8 = ['good', 'goods', 'better', 'best']
     words9 = ['in', 'outstanding', 'odd', 'odds']
     words10 = ['two']
     words11 = ['tjjdjfporflker']
 
-    # words = words0 + words1 + words2 + words3 + words4 + words5
-    words = words6 + words7 + words8 + words9 + words10 + words11
-    # words = ['cat']
-    phrases = ["make up", "pass for something", "the apple of my eye", "get away with"]
+    words = words0 + words1 + words2 + words3 + words4 + words5
+    words = words + words6 + words7 + words8 + words9 + words10 + words11
+    # words = ['2']
+    phrases = ["makes up", "pass for", "about time", "get away with", 'long time no see']
 
     # exit()
     for word in words:
-        s0 = phonetic.api_word_translation(word)
+        
         # s1 = phonetic.dc_dict_phonetic(word)
         # s2 = phonetic.ipa_dict(word)
         # s4_1 = phonetic.phonemizer(word, 'us')
@@ -497,11 +514,12 @@ def main():
         # s5 = phonetic.g2p(word)
         
         syllables = phonetic.api_word_phonetic(word)
+        text = phonetic.api_word_translation(word)
         
         # print(word, s1, s2, s3, s4_2, s4_1, s5)
         # print(word, s4_2, s4_1)
         print(word, syllables)
-        print(s0)
+        print(text)
         print()
         # print(s2_1)
         # print(s3_1)
@@ -514,11 +532,11 @@ def main():
     for phrase in phrases:
         # s1 = phonetic.phonemizer_phrase_sentence(phrase, 'us')
         # s2 = phonetic.phonemizer_phrase_sentence(phrase, 'br')
-        s = phonetic.api_phrase_sentence_phonetic(phrase)
-        s0 = phonetic.api_phrase_sentence_translation(phrase)
+        syllables = phonetic.api_phrase_sentence_phonetic(phrase)
+        text = phonetic.api_phrase_translation(phrase)
         # print(phrase, s1, s2)
-        print(phrase, s)
-        print(s0)
+        print(phrase, syllables)
+        print(text)
         print()
     exit()
     #sentence
