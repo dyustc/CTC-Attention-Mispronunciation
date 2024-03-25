@@ -26,6 +26,7 @@ class Phonetic(object):
             'EH' : 'e',
             # TODO: Suprasegmentals in wiki: https://en.wikipedia.org/wiki/International_Phonetic_Alphabet#Pitch_and_tone
             'ER' : 'ɜ',
+            'ER0' : 'ər',
             'EY' : 'eɪ',
             'IH' : 'ɪ',
             'IY' : 'i',
@@ -63,14 +64,11 @@ class Phonetic(object):
 
         for k, v in self.cmu_to_ipa_wiki.items():
             self.ipa_to_cmu_wiki[v] = k
-        # self.ipa_to_cmu_wiki['ɜ'] = 'ER'
-
-        self.cmu_phones = list(self.cmu_to_ipa_wiki.keys())
-        self.cmu_phones.remove('AH0')
 
         self.cmu_vowel_phones = [
             'AA', 'AE', 'AH', 'AO', 'AW', 'AY', 'EH', 
-            'ER', 'EY', 'IH', 'IY', 'OW', 'OY', 'UH', 'UW']
+            'ER', 'EY', 'IH', 'IY', 'OW', 'OY', 'UH', 'UW',
+            'AH0', 'ER0']
 
         self.cmu_consonant_phones = [
             'B', 'CH', 'D', 'DH', 'F', 'G', 'HH', 'JH', 
@@ -84,7 +82,7 @@ class Phonetic(object):
 
         for p in self.cmu_vowel_phones:
             self.ipa_vowel_phones.append(self.cmu_to_ipa_wiki[p])
-        self.ipa_vowel_phones.append(self.cmu_to_ipa_wiki['AH0'])
+        self.ipa_vowel_phones.remove(self.cmu_to_ipa_wiki['ER0'])
 
         for p in self.cmu_consonant_phones:
             self.ipa_consonant_phones.append(self.cmu_to_ipa_wiki[p])
@@ -262,7 +260,7 @@ class Phonetic(object):
             pass
         elif index == 0:
             phonetic = phonetic[1:]
-        elif index == len(phonetic) - 1: # last stress
+        elif index == len(phonetic) - 1: # last stress only happens in sentence or phrase phonetic annotation
             phonetic = phonetic[:index]
         else:
             is_first_vowel = True
@@ -496,10 +494,13 @@ def main():
     words8 = ['good', 'goods', 'better', 'best']
     words9 = ['in', 'outstanding', 'odd', 'odds']
     words10 = ['two']
-    words11 = ['tjjdjfporflker']
+    words11 = ['Summer', 'hurt', 'skirt', 'giver', 'toronto', 'tomorrow', 'chat', 'mark', 
+               'hot', 'astronaut', 'caught', 'not', 'australia', 'obstacle', 'montage']
+    words12 = ['garage', 'tomato']
+    words13 = ['tjjdjfporflker','epple', 'Kung']
 
     words = words0 + words1 + words2 + words3 + words4 + words5
-    words = words + words6 + words7 + words8 + words9 + words10 + words11
+    # words = words4 + words6 + words7 + words8 + words9 + words10 + words11 + words12 + words13
     # words = ['2']
     phrases = ["makes up", "pass for", "about time", "get away with", 'long time no see']
 
@@ -514,12 +515,14 @@ def main():
         # s5 = phonetic.g2p(word)
         
         syllables = phonetic.api_word_phonetic(word)
-        text = phonetic.api_word_translation(word)
+        # text = phonetic.api_word_translation(word)
         
         # print(word, s1, s2, s3, s4_2, s4_1, s5)
         # print(word, s4_2, s4_1)
         print(word, syllables)
-        print(text)
+        # print(s3)
+        # print(s5)
+        # print(text)
         print()
         # print(s2_1)
         # print(s3_1)
@@ -528,7 +531,7 @@ def main():
         # print(s2_1)
         # print(s3_1)
         # print(word, s1, s2, s3, s4, s1 == s2)
-    # exit()
+    exit()
     for phrase in phrases:
         # s1 = phonetic.phonemizer_phrase_sentence(phrase, 'us')
         # s2 = phonetic.phonemizer_phrase_sentence(phrase, 'br')
