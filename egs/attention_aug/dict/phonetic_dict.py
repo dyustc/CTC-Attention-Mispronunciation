@@ -344,7 +344,10 @@ class Phonetic(object):
                 if i + 2 <= len(phonetic) and phonetic[i:i+2] in self.ipa_to_cmu_wiki.keys():
                     p = self.ipa_to_cmu_wiki[phonetic[i:i+2]]
                     if p in self.cmu_vowel_phones:
-                        phones.append(p+'0')
+                        if p != 'ER0':
+                            phones.append(p+'0')
+                        else:
+                            phones.append(p)
                     else:
                         phones.append(p)
                 
@@ -410,6 +413,11 @@ class Phonetic(object):
 
     def phonemizer(self, word, style = 'us', to_phones = False) -> str:
         assert style in ['us', 'br']
+        
+        if to_phones and style == 'br':
+            warnings.warn("Brazilian phonemizer does not support to_phones option.")
+            style = 'us'
+        
         if style == 'us':
             backend = self.backend_us
         else:
@@ -434,34 +442,28 @@ class Phonetic(object):
 
     def cmu_dict(self, word, to_ipa = False) -> str:
         self.load_cmudict()
-        phones = self.cmudict_plain.get(word, None)
-        
-        if phones:
-            if not to_ipa:
-                return " ".join(phones)
-            else:
-                phones = self._phones39_to_ipa(phones, True)
-                return "".join(phones)   
-        else:
+        phones = self.cmudict_plain.get(word.lower(), None)
+
+        if not phones:
             return None
+        
+        if not to_ipa:
+            return " ".join(phones)
+        else:
+            phones = self._phones39_to_ipa(phones, True)
+            return "".join(phones)   
 
     def g2p(self, word, to_ipa = False) -> str:
         phones = self.g2p_backend(word)
         
-        if to_ipa:
+        if not to_ipa:
+            return " ".join(phones)
+        else:
             phones = self._phones39_to_ipa(phones, True)
             return "".join(phones)
-        else:
-            return " ".join(phones)
 
-    def g2p_sentence(self, text, to_ipa = False, normalized = True) -> str:
-        stress = True if normalized else False
-        
-        if to_ipa:
-            return self.g2p(text, to_ipa, stress)
-        else:
-            ret = self.g2p(text, to_ipa, stress)
-            return ret, ret.split(' ')
+    def g2p_sentence(self, text, to_ipa = False) -> str:        
+        return self.g2p(text, to_ipa)
 
     def api_word_phonetic(self, word) -> str:
         phonetic_us = self.phonemizer(word, 'us')
@@ -475,6 +477,26 @@ class Phonetic(object):
 
         ret = '英: /' + phonetic_br + '/ ' + '美: /' + phonetic_us + '/ '
         return ret
+
+    def api_word_phones_cmu(self, word) -> str:
+        p1 = self.cmu_dict(word)
+        p2 = self.g2p(word)
+        p3 = self.phonemizer(word, 'us', True)
+
+        if p1 and p1 != p2:
+            warnings.warn(f"CMU Dict and G2P phonetic not match for word {word}.")
+        
+        if p2 != p3:
+            warnings.warn(f"G2P and Phonemizer phonetic not match for word {word}.")
+            print(p2)
+            print(p3)
+        
+        # TODO: return p2 or p3
+        return p2
+
+    def api_phrase_sentence_phones_cmu(self, text) -> str:
+        p2 = self.g2p_sentence(text)
+        return p2
 
 def main():
     os.environ['PHONEMIZER_ESPEAK_LIBRARY'] = '/opt/homebrew/Cellar/espeak/1.48.04_1/lib/libespeak.dylib'
@@ -515,14 +537,17 @@ def main():
         # s5 = phonetic.g2p(word)
         
         syllables = phonetic.api_word_phonetic(word)
-        # text = phonetic.api_word_translation(word)
+        phones = phonetic.api_word_phones_cmu(word)
+        text = phonetic.api_word_translation(word)
         
         # print(word, s1, s2, s3, s4_2, s4_1, s5)
         # print(word, s4_2, s4_1)
         print(word, syllables)
+        print(phones)
         # print(s3)
         # print(s5)
-        # print(text)
+        # print(s4)
+        print(text)
         print()
         # print(s2_1)
         # print(s3_1)
@@ -531,14 +556,16 @@ def main():
         # print(s2_1)
         # print(s3_1)
         # print(word, s1, s2, s3, s4, s1 == s2)
-    exit()
+    # exit()
     for phrase in phrases:
         # s1 = phonetic.phonemizer_phrase_sentence(phrase, 'us')
         # s2 = phonetic.phonemizer_phrase_sentence(phrase, 'br')
         syllables = phonetic.api_phrase_sentence_phonetic(phrase)
+        phones = phonetic.api_phrase_sentence_phones_cmu(phrase)
         text = phonetic.api_phrase_translation(phrase)
         # print(phrase, s1, s2)
         print(phrase, syllables)
+        print(phones)
         print(text)
         print()
     exit()
