@@ -7,6 +7,8 @@ import sys
 import csv
 import os
 import warnings
+import platform
+import time
 from melo.api import TTS
 
 ECDICT_PATH = os.path.abspath('/'.join([os.path.dirname(__file__), '..', '..', '..', 'ECDICT']))
@@ -240,25 +242,7 @@ class Phonetic(object):
     def dc_dict_phonetic(self, word) -> str:
         result = self.dc_dict(word)
         return result.get('phonetic', None)
-
-    def api_word_translation(self, word) -> str:
-        translation = self.dc_dict_word_translation(word)
-        if not translation:
-            # use translation model
-            pass
-        return translation
-    
-    def api_phrase_translation(self, phrase) -> str:
-        translation = self.dc_dict_phrase_translation(phrase)
-        if not translation:
-            # use translation model
-            pass
-        return translation
-    
-    def api_sentence_translation(self, sentence) -> str:
-        # use translation model
-        return 
-    
+   
     # TODO: update ecdict to fix or update meaning of words or phrases
 
     def _stress_normalize(self, phonetic : str) -> str:
@@ -554,9 +538,31 @@ class Phonetic(object):
         model.tts_to_file(text, speaker_ids[f'EN-{accent}'], output_path, speed = speed)
 
         return output_path
+
+    def api_word_translation(self, word) -> str:
+        translation = self.dc_dict_word_translation(word)
+        if not translation:
+            # use translation model
+            pass
+        return translation
     
+    def api_phrase_translation(self, phrase) -> str:
+        translation = self.dc_dict_phrase_translation(phrase)
+        if not translation:
+            # use translation model
+            pass
+        return translation
+    
+    def api_sentence_translation(self, sentence) -> str:
+        # use translation model
+        return 
+ 
 def main():
-    os.environ['PHONEMIZER_ESPEAK_LIBRARY'] = '/opt/homebrew/Cellar/espeak/1.48.04_1/lib/libespeak.dylib'
+    t0 = time.time()
+    system = platform.system()
+    if system == 'Darwin':
+        os.environ['PHONEMIZER_ESPEAK_LIBRARY'] = '/opt/homebrew/Cellar/espeak/1.48.04_1/lib/libespeak.dylib'
+
     phonetic = Phonetic()
     phonetic.load_letter_ipa_dict()
 
@@ -573,7 +579,7 @@ def main():
     words8 = ['good', 'goods', 'better', 'best']
     words9 = ['in', 'outstanding', 'odd', 'odds']
     words10 = ['two']
-    words11 = ['Summer', 'hurt', 'skirt', 'giver', 'toronto', 'tomorrow', 'chat', 'mark', 
+    words11 = ['Summer', 'hurt', 'skirt', 'giver', 'Toronto', 'tomorrow', 'chat', 'mark', 
                'hot', 'astronaut', 'caught', 'not', 'australia', 'obstacle', 'montage']
     words12 = ['garage', 'tomato']
     words13 = ['tjjdjfporflker','epple', 'Kung']
@@ -582,8 +588,15 @@ def main():
     # words = words4 + words6 + words7 + words8 + words9 + words10 + words11 + words12 + words13
     # words = ['2']
     phrases = ["makes up", "pass for", "about time", "get away with", 'long time no see']
+    
+    texts = [
+        "I refuse to collect the refuse around here.", # homograph
+        "I'm an activationist.",
+        "The apple of my eye at 7 am run off.",
+    ] 
 
-    # exit()
+    start = time.time()
+    print(start - t0)
     for word in words:
         
         # s1 = phonetic.dc_dict_phonetic(word)
@@ -596,7 +609,7 @@ def main():
         syllables = phonetic.api_word_phonetic(word)
         phones = phonetic.api_word_phones_cmu(word)
         text = phonetic.api_word_translation(word)
-        phonetic.api_word_phrase_tts(word, speed=0.7)
+        phonetic.api_word_phrase_tts(word, 'US', speed=0.7)
         
         # print(word, s1, s2, s3, s4_2, s4_1, s5)
         # print(word, s4_2, s4_1)
@@ -621,7 +634,7 @@ def main():
         syllables = phonetic.api_phrase_sentence_phonetic(phrase)
         phones = phonetic.api_phrase_sentence_phones_cmu(phrase)
         text = phonetic.api_phrase_translation(phrase)
-        phonetic.api_word_phrase_tts(phrase, speed=1.0)
+        phonetic.api_word_phrase_tts(phrase, 'BR', speed=1.0)
         # print(phrase, s1, s2)
         print(phrase, syllables)
         print(phones)
@@ -629,23 +642,17 @@ def main():
         print()
     # exit()
     #sentence
-    texts = [
-        "I refuse to collect the refuse around here.", # homograph
-        "I'm an activationist.",
-        "The apple of my eye at 7 am run off.",
-        # "I have $250 in my pocket.", # number -> spell-out
-        # "popular pets, e.g. cats and dogs", # e.g. -> for example
-        # "the",
-        # "am"
-    ] # newly coined word
     for sentence in texts:
-        print(sentence)
+        # print(sentence)
         phonetic.api_sentence_tts(sentence)
         # print(phonetic.phonemizer_sentence(sentence, True, False))
         # print(phonetic.g2p(sentence, False))
         print("")
         # print(phonetic.g2p(sentence, False))
     
+    print(time.time() - start)
+    return 0
+
 if __name__ == '__main__':
     sys.exit(main())
 
