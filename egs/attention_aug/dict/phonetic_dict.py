@@ -7,6 +7,7 @@ import sys
 import csv
 import os
 import warnings
+from melo.api import TTS
 
 ECDICT_PATH = os.path.abspath('/'.join([os.path.dirname(__file__), '..', '..', '..', 'ECDICT']))
 sys.path.append(ECDICT_PATH)
@@ -95,6 +96,14 @@ class Phonetic(object):
         self.g2p_backend = G2p()
         self.backend_us = EspeakBackend('en-us', with_stress = True)
         self.backend_br = EspeakBackend('en', with_stress = True)
+
+        self.wav_dir = os.path.join(os.path.dirname(__file__), 'wav')
+        if not os.path.exists(self.wav_dir):
+            os.makedirs(self.wav_dir)
+
+        self.speed = 0.7
+        self.accent ='Default'
+        self.tts_model = TTS(language='EN', device='cpu')
 
     def load_ecdict(self, reload = False) -> None:
         if self.dc.__len__() == 0 or reload:
@@ -498,6 +507,54 @@ class Phonetic(object):
         p2 = self.g2p_sentence(text)
         return p2
 
+    def api_word_phrase_tts(self, text, accent = 'Default', speed = None) -> str:
+        assert accent in ['Default', 'US', 'BR', 'AU', 'IN']
+        if not speed:
+            speed = self.speed
+
+        model = self.tts_model
+        speaker_ids = model.hps.data.spk2id
+        
+        text = text.strip()
+        
+        parts = text.split(' ')
+        naming = ''
+        
+        if len(parts) == 1:
+            naming = parts[0].lower()
+        else:
+            naming = '_'.join([p.lower() for p in parts])
+
+        output_path = os.path.join(self.wav_dir, f'{naming.lower()}.wav')
+        model.tts_to_file(text, speaker_ids[f'EN-{accent}'], output_path, speed = speed)
+
+        return output_path
+    
+    def api_sentence_tts(self, text, accent = 'Default', speed = None) -> str:
+        assert accent in ['Default', 'US', 'BR', 'AU', 'IN']
+        if not speed:
+            speed = self.speed
+
+        model = self.tts_model
+        speaker_ids = model.hps.data.spk2id
+
+        text = text.strip()
+        
+        parts = text.split(' ')
+        naming = ''
+        if len(parts) == 1:
+            naming = parts[0].lower()    
+        elif len(parts) <= 3:
+            naming = '_'.join([p.lower() for p in parts])
+        else:
+            naming = '_'.join([p.lower() for p in parts[:3]])
+
+        naming = 'sentence_' + naming + '_' + str(len(parts))
+        output_path = os.path.join(self.wav_dir, f'{naming.lower()}.wav')
+        model.tts_to_file(text, speaker_ids[f'EN-{accent}'], output_path, speed = speed)
+
+        return output_path
+    
 def main():
     os.environ['PHONEMIZER_ESPEAK_LIBRARY'] = '/opt/homebrew/Cellar/espeak/1.48.04_1/lib/libespeak.dylib'
     phonetic = Phonetic()
@@ -539,6 +596,7 @@ def main():
         syllables = phonetic.api_word_phonetic(word)
         phones = phonetic.api_word_phones_cmu(word)
         text = phonetic.api_word_translation(word)
+        phonetic.api_word_phrase_tts(word, speed=0.7)
         
         # print(word, s1, s2, s3, s4_2, s4_1, s5)
         # print(word, s4_2, s4_1)
@@ -563,12 +621,13 @@ def main():
         syllables = phonetic.api_phrase_sentence_phonetic(phrase)
         phones = phonetic.api_phrase_sentence_phones_cmu(phrase)
         text = phonetic.api_phrase_translation(phrase)
+        phonetic.api_word_phrase_tts(phrase, speed=1.0)
         # print(phrase, s1, s2)
         print(phrase, syllables)
         print(phones)
         print(text)
         print()
-    exit()
+    # exit()
     #sentence
     texts = [
         "I refuse to collect the refuse around here.", # homograph
@@ -581,7 +640,7 @@ def main():
     ] # newly coined word
     for sentence in texts:
         print(sentence)
-        print(phonetic.api_phrase_sentence_phonetic(sentence))
+        phonetic.api_sentence_tts(sentence)
         # print(phonetic.phonemizer_sentence(sentence, True, False))
         # print(phonetic.g2p(sentence, False))
         print("")
