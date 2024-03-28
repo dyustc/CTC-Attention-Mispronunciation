@@ -333,6 +333,8 @@ class Phonetic(object):
                 elif i + 2 <= len(phonetic) and phonetic[i+1] in self.ipa_to_cmu_wiki.keys():
                     phones.append(self.ipa_to_cmu_wiki[phonetic[i+1]] + stress_map[phonetic[i]])
                     i += 2
+                else:
+                    i += 1 
             else:
                 if i + 2 <= len(phonetic) and phonetic[i:i+2] in self.ipa_to_cmu_wiki.keys():
                     p = self.ipa_to_cmu_wiki[phonetic[i:i+2]]
@@ -346,8 +348,10 @@ class Phonetic(object):
                 
                     i += 2
                 else:
-                    p = self.ipa_to_cmu_wiki[phonetic[i]]
-                    if p == 'AH0':
+                    p = self.ipa_to_cmu_wiki.get(phonetic[i], None)
+                    if not p:
+                        pass
+                    elif p == 'AH0':
                         phones.append(p)
                     elif p in self.cmu_vowel_phones:
                         phones.append(p+'0')
@@ -357,6 +361,7 @@ class Phonetic(object):
 
         return phones
 
+    # TODO: not verified, not called in normal API call
     def _phones39_to_ipa(self, phones: List[str], stress: bool = True) -> List[str]:
         if stress:
             vowels = [(i, p) for i, p in enumerate(phones) if p not in self.cmu_consonant_phones]
@@ -408,7 +413,7 @@ class Phonetic(object):
         assert style in ['us', 'br']
         
         if to_phones and style == 'br':
-            warnings.warn("Brazilian phonemizer does not support to_phones option.")
+            warnings.warn("Britain phonemizer does not support to_phones option.")
             style = 'us'
         
         if style == 'us':
@@ -472,19 +477,22 @@ class Phonetic(object):
         return ret
 
     def api_word_phones_cmu(self, word) -> str:
+        # TODO: Won't be calling all 3 calls in the future, and there is test to all APIs to all words
         p1 = self.cmu_dict(word)
         p2 = self.g2p(word)
         p3 = self.phonemizer(word, 'us', True)
 
         if p1 and p1 != p2:
             warnings.warn(f"CMU Dict and G2P phonetic not match for word {word}.")
+            print(p1)
+            print(p2)
         
         if p2 != p3:
             warnings.warn(f"G2P and Phonemizer phonetic not match for word {word}.")
             print(p2)
             print(p3)
         
-        # TODO: return p2 or p3
+        # TODO: return p2 or p3, return p3 after the dataset is updated according to phonemizer 
         return p2
 
     def api_phrase_sentence_phones_cmu(self, text) -> str:
@@ -517,7 +525,7 @@ class Phonetic(object):
     def api_sentence_tts(self, text, accent = 'Default', speed = None) -> str:
         assert accent in ['Default', 'US', 'BR', 'AU', 'IN']
         if not speed:
-            speed = self.speed
+            speed = self.speed + 0.1
 
         model = self.tts_model
         speaker_ids = model.hps.data.spk2id
@@ -585,15 +593,20 @@ def main():
     words13 = ['tjjdjfporflker','epple', 'Kung']
 
     words = words0 + words1 + words2 + words3 + words4 + words5
-    # words = words4 + words6 + words7 + words8 + words9 + words10 + words11 + words12 + words13
-    # words = ['2']
-    phrases = ["makes up", "pass for", "about time", "get away with", 'long time no see']
+    words = words + words4 + words6 + words7 + words8 + words9 + words10 + words11 + words12 + words13
+    words = words + ['class','caught', 'hurt', 'heart']
+    phrases = ["makes up", "pass for", "about time", "get away with", 'long time no see', 'take chance', 'shake it off']
     
     texts = [
         "I refuse to collect the refuse around here.", # homograph
         "I'm an activationist.",
         "The apple of my eye at 7 am run off.",
     ] 
+
+    texts = [
+        "I catched the suspect in a supermarket.",
+        "He isn't reasonable enough to suspect anyone of such a crime.",
+    ]
 
     start = time.time()
     print(start - t0)
@@ -603,13 +616,13 @@ def main():
         # s2 = phonetic.ipa_dict(word)
         # s4_1 = phonetic.phonemizer(word, 'us')
         # s4_2 = phonetic.phonemizer(word, 'br')
-        # s3 = phonetic.cmu_dict(word)
+        # s3 = phonetic.cmu_dict(word)x
         # s5 = phonetic.g2p(word)
         
         syllables = phonetic.api_word_phonetic(word)
         phones = phonetic.api_word_phones_cmu(word)
         text = phonetic.api_word_translation(word)
-        phonetic.api_word_phrase_tts(word, 'US', speed=0.7)
+        phonetic.api_word_phrase_tts(word, speed=0.8)
         
         # print(word, s1, s2, s3, s4_2, s4_1, s5)
         # print(word, s4_2, s4_1)
@@ -628,6 +641,20 @@ def main():
         # print(s3_1)
         # print(word, s1, s2, s3, s4, s1 == s2)
     # exit()
+    #sentence
+    for sentence in texts:
+        # print(sentence)
+        phonetic.api_sentence_tts(sentence)
+        syllables = phonetic.api_phrase_sentence_phonetic(sentence)
+        phones = phonetic.api_phrase_sentence_phones_cmu(sentence)
+        # print(phonetic.phonemizer_sentence(sentence, True, False))
+        # print(phonetic.g2p(sentence, False))
+        print(text)
+        print(syllables)
+        print(phones)
+        print("")
+        # print(phonetic.g2p(sentence, False))
+    # exit()
     for phrase in phrases:
         # s1 = phonetic.phonemizer_phrase_sentence(phrase, 'us')
         # s2 = phonetic.phonemizer_phrase_sentence(phrase, 'br')
@@ -641,14 +668,7 @@ def main():
         print(text)
         print()
     # exit()
-    #sentence
-    for sentence in texts:
-        # print(sentence)
-        phonetic.api_sentence_tts(sentence)
-        # print(phonetic.phonemizer_sentence(sentence, True, False))
-        # print(phonetic.g2p(sentence, False))
-        print("")
-        # print(phonetic.g2p(sentence, False))
+
     
     print(time.time() - start)
     return 0
