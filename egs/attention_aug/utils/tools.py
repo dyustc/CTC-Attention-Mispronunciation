@@ -53,15 +53,10 @@ common_incorrect_voc = {
     'oy': ['ao', 'ow', 'ay']
 }
 
-vowels = ['iy', 'aa', 'ae', 'eh', 'ah', 'ao', 'ih', 'ey', 'aw', 'ay', 'er', 'uw', 'uh', 'oy', 'ow']
+vowels = ['iy', 'aa', 'ae', 'eh', 'ah', 'ao', 'ih', 'ey', 'aw', 'ay', 'er', 'uw', 'uh', 'oy', 'ow', 'ah0', 'er0']
 consonants = ['w', 'dh', 'y', 'hh', 'ch', 'jh', 'th', 'zh', 'd', 'ng', 'b', 'g', 'f', 'k', 'm', 'l', 'n', 's', 'r', 't', 'v', 'z', 'p', 'sh']
-"""
-index2word = {0: 'blank', 1: 'UNK', 2: 'sil', 3: 'ah', 4: 's', 5: 'uw', 6: 'm', 7: 'f', 8: 'ao', 9: 'r', 10: 'ih', 11: 'z', 12: 'ae', 13: 'p', 14: 'uh', 15: 'l', 16: 'ch', 17: 'ey', 18: 'sh', 19: 'n', 20: 'w', 21: 'eh', 22: 'er', 23: 'aa', 24: 'hh', 25: 'k', 26: 'iy', 27: 'ng', 28: 'd', 29: 'dh', 30: 'aw', 31: 'ay', 32: 'v', 33: 'ow', 34: 'b', 35: 'th', 36: 'g', 37: 'y', 38: 'jh', 39: 't', 40: 'oy', 41: 'zh', 42:'err'}
-"""
-"""
-word2index = {'blank': 0, 'UNK': 1, 'sil': 2, 'ah': 3, 's': 4, 'uw': 5, 'm': 6, 'f': 7, 'ao': 8, 'r': 9, 'ih': 10, 'z': 11, 'ae': 12, 'p': 13, 'uh': 14, 'l': 15, 'ch': 16, 'ey': 17, 'sh': 18, 'n': 19, 'w': 20, 'eh': 21, 'er': 22, 'aa': 23, 'hh': 24, 'k': 25, 'iy': 26, 'ng': 27, 'd': 28, 'dh': 29, 'aw': 30, 'ay': 31, 'v': 32, 'ow': 33, 'b': 34, 'th': 35, 'g': 36, 'y': 37, 'jh': 38, 't': 39, 'oy': 40, 'zh': 41, 'err':42}
-"""
-index2word = {0: 'blank',
+index2word = {
+ 0: 'blank',
  1: 'UNK',
  2: 'sil',
  3: 'sh',
@@ -70,7 +65,7 @@ index2word = {0: 'blank',
  6: 'ae',
  7: 'd',
  8: 'y',
- 9: 'er',
+ 9: 'er0',
  10: 'aa',
  11: 'r',
  12: 'k',
@@ -90,22 +85,26 @@ index2word = {0: 'blank',
  26: 'oy',
  27: 'ay',
  28: 'b',
- 29: 'v',
- 30: 'f',
- 31: 'z',
- 32: 'th',
- 33: 'ah',
- 34: 'p',
- 35: 'ey',
- 36: 'ng',
- 37: 'ch',
- 38: 'uh',
- 39: 'zh',
- 40: 'jh',
- 41: 'aw',
- 42: 'err'}
+ 29: 'er',
+ 30: 'v',
+ 31: 'f',
+ 32: 'z',
+ 33: 'th',
+ 34: 'ah',
+ 35: 'ah0',
+ 36: 'p',
+ 37: 'ey',
+ 38: 'ng',
+ 39: 'ch',
+ 40: 'uh',
+ 41: 'zh',
+ 42: 'jh',
+ 43: 'aw',
+ 44: 'err'
+ }
 
-word2index = {'blank': 0,
+word2index = {
+ 'blank': 0,
  'UNK': 1,
  'sil': 2,
  'sh': 3,
@@ -114,7 +113,7 @@ word2index = {'blank': 0,
  'ae': 6,
  'd': 7,
  'y': 8,
- 'er': 9,
+ 'er0': 9,
  'aa': 10,
  'r': 11,
  'k': 12,
@@ -134,20 +133,23 @@ word2index = {'blank': 0,
  'oy': 26,
  'ay': 27,
  'b': 28,
- 'v': 29,
- 'f': 30,
- 'z': 31,
- 'th': 32,
- 'ah': 33,
- 'p': 34,
- 'ey': 35,
- 'ng': 36,
- 'ch': 37,
- 'uh': 38,
- 'zh': 39,
- 'jh': 40,
- 'aw': 41,
- 'err': 42}
+ 'er' : 29,
+ 'v': 30,
+ 'f': 31,
+ 'z': 32,
+ 'th': 33,
+ 'ah': 34,
+ 'ah0' : 35,
+ 'p': 36,
+ 'ey': 37,
+ 'ng': 38,
+ 'ch': 39,
+ 'uh': 40,
+ 'zh': 41,
+ 'jh': 42,
+ 'aw': 43,
+ 'err': 44
+ }
 def load_audio(path):
     """
     Args:
@@ -285,7 +287,7 @@ def process_label_file(label_file, label_type, class2int):
     return label_dict
 
 
-def data_enhancement(phone, mutation_prob=0.1, enhancement_type=1, phone_num = 42):
+def data_enhancement(phone, mutation_prob=0.1, enhancement_type=1, phone_num = 44):
     """
     Function:
         data enhancement
@@ -301,6 +303,7 @@ def data_enhancement(phone, mutation_prob=0.1, enhancement_type=1, phone_num = 4
         mutation_phone: mutation phone
     """
     mutation_phone = phone
+    # print(enhancement_type)
     
     if enhancement_type == 1:
         # random mutation

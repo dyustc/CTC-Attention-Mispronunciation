@@ -146,7 +146,7 @@ class CTC_Model(nn.Module):
         self.rnns = nn.Sequential(OrderedDict(rnns))
         
         ## Character_embedding
-        self.embeds = nn.Embedding(42, 512)
+        self.embeds = nn.Embedding(44, 512)
         self.lstm_embeds = nn.LSTM(512, rnn_hidden_size, batch_first=True,bidirectional = True)
         self.score = nn.Linear(rnn_hidden_size*2, rnn_hidden_size*2, bias=False)
 
@@ -186,8 +186,12 @@ class CTC_Model(nn.Module):
             x = self.rnns(x)
             # print('after rnn ', x.shape)
             x = x.transpose(0,1)
+            # print('x', x.shape)
+            # print('x1', x1.shape)
+            
             
             x1 = self.embeds(x1)
+            # print('after embedding', x1.shape)
 
             # [batch,Char_num,Hidden_unit]
             # value

@@ -1,14 +1,14 @@
 #!/bin/bash
 
-if [ $# -ne 2 ]; then
+if [ $# -ne 3 ]; then
    echo "Need directory of TIMIT dataset !"
    exit 1;
 fi
 
 conf_dir=`pwd`/conf
-prepare_dir=`pwd`/data3
 map_file=$conf_dir/phones.60-48-39.map
 phoneme_map=$2
+prepare_dir=$3
 
 . path.sh
 sph2pipe=$KALDI_ROOT/tools/sph2pipe_v2.5/sph2pipe
@@ -62,10 +62,9 @@ for x in train_timit; do
     cat $tmpdir/${x}.trans | sort > $prepare_dir/$x/${y}_text || exit 1;
     if [ $y == phn ]; then 
         cp $prepare_dir/$x/${y}_text $prepare_dir/$x/${y}_text.tmp
-        python local/normalize_phone.py --map $map_file --to $phoneme_map --src $prepare_dir/$x/${y}_text.tmp --tgt $prepare_dir/$x/transcript_${y}_text
         python local/normalize_phone.py --map $map_file --to $phoneme_map --src $prepare_dir/$x/${y}_text.tmp --tgt $prepare_dir/$x/${y}_text
-        # cp $prepare_dir/$x/${y}_text $prepare_dir/$x/transcript_${y}_text
         rm -f $prepare_dir/$x/${y}_text.tmp
+        cp $prepare_dir/$x/${y}_text $prepare_dir/$x/transcript_${y}_text
     fi
   done
 done

@@ -28,6 +28,7 @@ w1 = open(tmp_path+"/wav.scp",'w+')
 w2 = open(tmp_path+"/wav_sph.scp",'w+')
 w3 = open(tmp_path+"/phn_text",'w+')
 w4 = open(tmp_path+"/transcript_phn_text",'w+')
+w5 = open(tmp_path+"/a_transcript_phn_text",'w+' )
 
 def del_repeat_sil(phn_lst):
     tmp = [phn_lst[0]]
@@ -47,7 +48,7 @@ for phn_path in wav_lst:
     wav_path = re.sub("TextGrid","wav",tmp)
     tmp = re.sub("annotation","transcript",phn_path)
     text_path = re.sub("TextGrid","txt",tmp)
-    can_phn_path = re.sub("annotation", "cmu_textgrid", phn_path)
+    can_phn_path = re.sub("annotation", "arpa_textgrid", phn_path)
     if(spk_id in eval(type_[-1]+"_spk") ):
         cur_phns = []
         transcript_phns = []
@@ -61,16 +62,22 @@ for phn_path in wav_lst:
                 cur_phns.append("sil")
             else:
                 trans_human_type = i.mark.split(",")
+                trans_phn = trans_human_type[0]
+                if trans_phn == 'AH0' or trans_phn == 'ER0':
+                    pass
+                else:
+                    trans_phn = trans_phn.rstrip(string.digits)
+                
                 if( len(trans_human_type) == 1 ):
                     phn = trans_human_type[0]
                 else:
-                    
                     phn = trans_human_type[1]
-                trans_phn = trans_human_type[0]
-                trans_phn = trans_phn.rstrip(string.digits)
-                
-                ## phn 
-                phn = phn.rstrip(string.digits+'*_')
+    
+                ## phn
+                if phn == 'AH0' or phn == 'ER0':
+                    pass
+                else:
+                    phn = phn.rstrip(string.digits+'*_')
                 
                 if(phn == "sp" or phn == "SIL" or phn == " " or phn == "spn" ):
                     cur_phns.append("sil")
@@ -78,10 +85,10 @@ for phn_path in wav_lst:
                     phn = phn.strip(" ")
                     if(phn == "ERR" or phn == "err"):
                         cur_phns.append("err")
-                    elif(phn == "ER)"):
-                        cur_phns.append("er")
-                    elif(phn == "AX" or phn == "ax" or phn == "AH)"):
-                        cur_phns.append("ah")
+                    elif(phn == "ER)" or phn == 'ER0'):
+                        cur_phns.append("er0")
+                    elif(phn == "AX" or phn == "ax" or phn == "AH)" or phn == 'AH0'):
+                        cur_phns.append("ah0")
                     elif(phn == "V``"):
                         cur_phns.append("v")
                     elif(phn == "W`"):
@@ -96,10 +103,10 @@ for phn_path in wav_lst:
                     trans_phn = trans_phn.strip(" ")
                     if(trans_phn == "ERR" or trans_phn == "err"):
                         transcript_phns.append("err")
-                    elif(trans_phn == "ER)"):
-                        transcript_phns.append("er")
-                    elif(trans_phn == "AX" or trans_phn == "ax" or trans_phn == "AH)"):
-                        transcript_phns.append("ah")
+                    elif(trans_phn == "ER)" or trans_phn == 'ER0'):
+                        transcript_phns.append("er0")
+                    elif(trans_phn == "AX" or trans_phn == "ax" or trans_phn == "AH)" or trans_phn == 'AH0'):
+                        transcript_phns.append("ah0")
                     elif(trans_phn == "V``"):
                         transcript_phns.append("v")
                     elif(trans_phn == "W`"):
@@ -112,7 +119,10 @@ for phn_path in wav_lst:
                 can_transcript_phns.append("sil")
             
             trans_phn = i.mark
-            trans_phn = trans_phn.rstrip(string.digits)
+            if trans_phn == 'AH0' or trans_phn == 'ER0':
+                pass
+            else:
+                rans_phn = trans_phn.rstrip(string.digits)
 
             ## trans phn 
             if(trans_phn == "sp" or trans_phn == "SIL" or trans_phn == " " or trans_phn == "spn" ):
@@ -121,10 +131,10 @@ for phn_path in wav_lst:
                 trans_phn = trans_phn.strip(" ")
                 if(trans_phn == "ERR" or trans_phn == "err"):
                     can_transcript_phns.append("err")
-                elif(trans_phn == "ER)"):
-                    can_transcript_phns.append("er")
-                elif(trans_phn == "AX" or trans_phn == "ax" or trans_phn == "AH)"):
-                    can_transcript_phns.append("ah")
+                elif(trans_phn == "ER)" or trans_phn == 'ER0'):
+                    can_transcript_phns.append("er0")
+                elif(trans_phn == "AX" or trans_phn == "ax" or trans_phn == "AH)" or trans_phn == 'AH0'):
+                    can_transcript_phns.append("ah0")
                 elif(trans_phn == "V``"):
                     can_transcript_phns.append("v")
                 elif(trans_phn == "W`"):
@@ -139,11 +149,13 @@ for phn_path in wav_lst:
         w2.write(utt_id + " " + wav_path + "\n" )
         w3.write(utt_id + " " + " ".join(del_repeat_sil(cur_phns)) + "\n" )
         w4.write(utt_id + " " + " ".join(del_repeat_sil(can_transcript_phns)) + "\n" )
+        w5.write(utt_id + " " + " ".join(del_repeat_sil(transcript_phns)) + "\n" )
 
 w.close()
 w1.close()
 w2.close()
 w3.close()
 w4.close()
+w5.close()
 
 
