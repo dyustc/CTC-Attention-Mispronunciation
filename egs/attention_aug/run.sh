@@ -10,10 +10,11 @@ finish=4
 
 l2arctic_dir="/data2/daiyi/dataset/l2arctic" 
 timit_dir='/data2/daiyi/dataset/Timit/data'
-phoneme_map='60-39'
-feat_dir='data3'                            #dir to save feature
+phoneme_map='60-41'
+feat_dir='data0329'  
+prepare_dir=`pwd`/$feat_dir                       #dir to save feature
 feat_type='fbank'                          #fbank, mfcc, spectrogram
-config_file='conf/ctc_config.3.yaml'
+config_file='conf/ctc_config.0329.yaml'
 
 if [ ! -z $1 ]; then
     stage=$1
@@ -22,7 +23,7 @@ fi
 if [ $stage -le 0 ] && [ $finish -ge 0 ]; then
     echo "Step 0: Data Preparation ..."
 
-    local/timit_data_prep.sh $timit_dir $phoneme_map || exit 1;
+    local/timit_data_prep.sh $timit_dir $phoneme_map $prepare_dir || exit 1;
     python3 local/l2arctic_prep.py --l2_path=$l2arctic_dir --save_path=${feat_dir}/l2_train  
     python3 local/l2arctic_prep.py --l2_path=$l2arctic_dir --save_path=${feat_dir}/l2_dev  
     python3 local/l2arctic_prep.py --l2_path=$l2arctic_dir --save_path=${feat_dir}/l2_test
@@ -30,10 +31,10 @@ if [ $stage -le 0 ] && [ $finish -ge 0 ]; then
     local/timit_l2_merge.sh ${feat_dir}/train_timit ${feat_dir}/l2_train ${feat_dir}/train
     rm -rf ${feat_dir}/l2_train ${feat_dir}/train_timit
     
-    #local/timit_l2_merge.sh ${feat_dir}/dev_timit ${feat_dir}/l2_dev ${feat_dir}/dev
+    # local/timit_l2_merge.sh ${feat_dir}/dev_timit ${feat_dir}/l2_dev ${feat_dir}/dev
     #rm -rf ${feat_dir}/l2_dev ${feat_dir}/dev_timit
     
-    #local/timit_l2_merge.sh ${feat_dir}/test_timit ${feat_dir}/l2_test ${feat_dir}/test
+    # local/timit_l2_merge.sh ${feat_dir}/test_timit ${feat_dir}/l2_test ${feat_dir}/test
     #rm -rf ${feat_dir}/l2_test ${feat_dir}/test_timit
     mv ${feat_dir}/l2_dev ${feat_dir}/dev  
     mv ${feat_dir}/l2_test ${feat_dir}/test

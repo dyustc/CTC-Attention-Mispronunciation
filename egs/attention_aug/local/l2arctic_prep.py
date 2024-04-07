@@ -122,7 +122,7 @@ for phn_path in wav_lst:
             if trans_phn == 'AH0' or trans_phn == 'ER0':
                 pass
             else:
-                rans_phn = trans_phn.rstrip(string.digits)
+                trans_phn = trans_phn.rstrip(string.digits)
 
             ## trans phn 
             if(trans_phn == "sp" or trans_phn == "SIL" or trans_phn == " " or trans_phn == "spn" ):

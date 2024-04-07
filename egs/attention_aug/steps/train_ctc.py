@@ -41,13 +41,18 @@ def run_epoch(epoch_id, model, data_iter, loss_fn, device, optimizer=None, print
     
     for i, data in enumerate(data_iter):
         inputs, input_sizes, targets, target_sizes,trans,trans_sizes, utt_list = data
-        
         inputs = inputs.to(device)
         input_sizes = input_sizes.to(device)
         targets = targets.to(device)
         target_sizes = target_sizes.to(device)
         trans = trans.to(device)
         trans_sizes = trans_sizes.to(device)
+        # print('targets', targets.cpu().numpy(), targets.shape)
+        # print('target_sizes', target_sizes.cpu().numpy())
+        # print('trans', trans.cpu().numpy(), trans.shape)
+        # print('trans_sizes', trans_sizes.cpu().numpy())
+        # for ax in range(64):
+        #     print(max(trans[ax]))
 
         # TODO: why turn on or off add_cnn switch would affect this, currently only on would make the train script work
         #print('inputs 0', inputs.shape) # N, L, H // L的含义：该batch里最长的一个case的长度
@@ -56,12 +61,16 @@ def run_epoch(epoch_id, model, data_iter, loss_fn, device, optimizer=None, print
         
        
         out = model(inputs,trans)
-        #print('outs ', out.shape)
+        # print('outs ', out.shape)
         
         out_len, batch_size, _ = out.size()
         
         input_sizes = (input_sizes * out_len).long()
+        # print(out.shape)
+        # print(input_sizes.shape)
+        # print('target_sizes', target_sizes.cpu().numpy())
         loss = loss_fn(out, targets, input_sizes, target_sizes)
+        # exit()
         loss /= batch_size
         # cur_loss += loss.item()
         total_loss += loss.item()
@@ -113,6 +122,12 @@ def main(conf):
     
     #Data Loader
     vocab = Vocab(opts.vocab_file)
+    print(opts.train_scp_path)
+    print(opts.train_lab_path)
+    print(opts.train_trans_path)
+    print(opts.valid_scp_path)
+    print(opts.valid_lab_path)
+    print(opts.valid_trans_path)
     train_dataset = SpeechDataset(vocab, opts.train_scp_path, opts.train_lab_path,opts.train_trans_path, opts, True)
     dev_dataset = SpeechDataset(vocab, opts.valid_scp_path, opts.valid_lab_path, opts.valid_trans_path, opts)
     train_loader = SpeechDataLoader(train_dataset, batch_size=opts.batch_size, shuffle=opts.shuffle_train, num_workers=opts.num_workers)

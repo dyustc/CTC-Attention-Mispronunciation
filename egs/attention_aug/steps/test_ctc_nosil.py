@@ -9,7 +9,7 @@ import yaml
 import argparse
 import torch.nn as nn
 import re
-from g2p_en import G2p
+# from g2p_en import G2p
 from tqdm import tqdm
 
 sys.path.append('./')
@@ -59,11 +59,27 @@ def print_align_space_canonical_origin(s1, s2, l):
             p_s2.insert(i, 'I')
         i += 1
     
-    p_s1 = [p+" " if len(p) == 1 else p for p in p_s1]
-    p_s2 = [p+" " if len(p) == 1 else p for p in p_s2]
-    l = [s+" " for s in l]
+    p_s1_ = []
+    p_s2_ = []
+    for p in p_s1:
+        if len(p) == 1:
+            p_s1_.append(p + "  ")
+        elif len(p) == 2:
+            p_s1_.append(p + " ")
+        else:
+            p_s1_.append(p)
 
-    return ' '.join(p_s2), ' '.join(p_s1), ' '.join(l), d
+    for p in p_s2:
+        if len(p) == 1:
+            p_s2_.append(p + "  ")
+        elif len(p) == 2:
+            p_s2_.append(p + " ")
+        else:
+            p_s2_.append(p)
+
+    l = [s+"  " for s in l]
+
+    return ' '.join(p_s2_), ' '.join(p_s1_), ' '.join(l), d
 
 def test():
     args = parser.parse_args()
@@ -166,6 +182,7 @@ def test():
             labels = []
             canonicals = []
             assert (len(targets) == len(trans))
+            # TXHC_arctic_b0483
 
             for i in range(len(targets)):
                 label = [ vocab.index2word[num] for num in targets[i][:target_sizes[i]]]
@@ -204,18 +221,21 @@ def test():
                 _, dc_path = decoder.wer(decoded_nosil[x], canonicals_nosil[x])
 
                 tmp1, tmp2, tmp3, d1 = print_align_space_canonical_origin(labels_nosil[x], canonicals_nosil[x], lc_path)
-                # if utt_list[x][:4] in m_speaker:
-                #     print(utt_list[x])
-                #     utterance = test_wrd_dict[utt_list[x]]
-                #     print("text      : " + utterance)
-                #     print("origin    : " + tmp2)
-                #     print("            " + tmp3)
-                #     print("canonical : " + tmp1)
+                if utt_list[x][:4] in m_speaker:
+                    print(utt_list[x])
+                    # print('canonicals_nosil', canonicals_nosil[x])
+                    # print('labels_nosil', labels_nosil[x])
+                    # print('decoded_nosil', decoded_nosil[x])
+                    utterance = test_wrd_dict[utt_list[x]]
+                    print("text      : " + utterance)
+                    print("origin    : " + tmp2)
+                    print("            " + tmp3)
+                    print("canonical : " + tmp1)
                 tmp1, tmp2, tmp3, d2 = print_align_space_canonical_origin(decoded_nosil[x], canonicals_nosil[x], dc_path)
-                # if utt_list[x][:4] in m_speaker:
-                #     print("canonical : " + tmp1) 
-                #     print("            " + tmp3)
-                #     print("decode    : " + tmp2)
+                if utt_list[x][:4] in m_speaker:
+                    print("canonical : " + tmp1) 
+                    print("            " + tmp3)
+                    print("decode    : " + tmp2)
 
                 total_phonemes_in_canonical += len(d1.keys()) - 1
                 if utt_list[x][:4] in m_speaker:
