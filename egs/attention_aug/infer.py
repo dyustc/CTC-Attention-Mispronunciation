@@ -337,7 +337,7 @@ def infer(phonetic, word_dict, test_loader, device, model, decoder, vocab, test_
                 del_sub_cnt = sum([1 if c == 'D' or c == 'S' else 0 for c in dc_path])
                 correct_cnt = sum([1 if c == '-' else 0 for c in dc_path])
                 insertion_fault, substution_fault, deletion_fault = stastics(dc_path, phones_canonicals, phones_decoded)
-                tmp_score = min(len(insertion_fault) / 2, 0.2 * correct_cnt)
+                tmp_score = min(len(insertion_fault) / 4, 0.1 * (correct_cnt + del_sub_cnt))
                 score = math.ceil((1 - (del_sub_cnt + tmp_score)/(del_sub_cnt + correct_cnt)) * 100)
 
                 # if utt_list[x] == '18':
