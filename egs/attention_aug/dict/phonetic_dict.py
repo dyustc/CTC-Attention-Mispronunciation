@@ -108,7 +108,7 @@ class Phonetic(object):
         self.tts_model = TTS(language='EN', device='cpu')
 
     def load_ecdict(self, reload = False) -> None:
-        if self.dc.__len__() == 0 or reload:
+        if self.dc.__len__() == 0 or reload:           
             csvname = os.path.join(ECDICT_PATH, 'ecdict.csv')
             self.dc = DictCsv(csvname)
         
@@ -116,8 +116,8 @@ class Phonetic(object):
    
     def load_ipadict(self, reload = False) -> None:
         if self.cmudict_ipa.__len__() == 0 or reload:
-            # init cmu ipa dict
-            with open('./cmudict-0.7b-ipa.txt', 'r') as f:
+            IPADICT_PATH = os.path.abspath('/'.join([os.path.dirname(__file__), 'cmudict-0.7b-ipa.txt']))
+            with open(IPADICT_PATH, 'r') as f:
                 lines = f.readlines()
                 for l in lines:
                     parts = l.split('\t')
@@ -132,7 +132,8 @@ class Phonetic(object):
 
     def load_cmudict(self, reload = False) -> None:
         if self.cmudict_plain.__len__() == 0 or reload:
-            with open('./cmudict.dict', 'r') as f:
+            CMUDICT_PATH = os.path.abspath('/'.join([os.path.dirname(__file__), 'cmudict.dict']))
+            with open(CMUDICT_PATH, 'r') as f:
                 lines = f.readlines()
                 for l in lines:
                     parts = l.split(' ')
@@ -145,7 +146,8 @@ class Phonetic(object):
 
     def load_letter_ipa_dict(self, reload = False) -> None:
         if self.letter_ipa_dict.__len__() == 0 or reload:
-            with open('./phonics_engine.csv', newline='') as csvfile:
+            LETTERIPADICT_PATH = os.path.abspath('/'.join([os.path.dirname(__file__), 'phonics_engine.csv']))
+            with open(LETTERIPADICT_PATH, newline='') as csvfile:
                 spamreader = csv.reader(csvfile, delimiter='\t', quotechar='|')
                 for row in spamreader:
                     word = row[0]
@@ -493,7 +495,7 @@ class Phonetic(object):
             print(p3)
         
         # TODO: return p2 or p3, return p3 after the dataset is updated according to phonemizer 
-        return p2
+        return p3
 
     def api_phrase_sentence_phones_cmu(self, text) -> str:
         p2 = self.g2p_sentence(text)
@@ -506,6 +508,8 @@ class Phonetic(object):
 
         model = self.tts_model
         speaker_ids = model.hps.data.spk2id
+        # print(speaker_ids)
+        # exit()
         
         text = text.strip()
         
@@ -608,6 +612,9 @@ def main():
         "He isn't reasonable enough to suspect anyone of such a crime.",
     ]
 
+    words = ['vocabulary', 'gather', 'about', 'through', 'rough', 'content', 'magazine', 'accept', 'talked', 'bananas',
+             'wishes', 'OPPO', 'suburban', 'outstanding', 'geology', 'dashing', 'longtimenosee', 'phoneme', 'thorough', 'Toronto']
+
     start = time.time()
     print(start - t0)
     for word in words:
@@ -622,7 +629,7 @@ def main():
         syllables = phonetic.api_word_phonetic(word)
         phones = phonetic.api_word_phones_cmu(word)
         text = phonetic.api_word_translation(word)
-        phonetic.api_word_phrase_tts(word, speed=0.8)
+        phonetic.api_word_phrase_tts(word, accent='Default', speed=0.7)
         
         # print(word, s1, s2, s3, s4_2, s4_1, s5)
         # print(word, s4_2, s4_1)
@@ -640,7 +647,7 @@ def main():
         # print(s2_1)
         # print(s3_1)
         # print(word, s1, s2, s3, s4, s1 == s2)
-    # exit()
+    exit()
     #sentence
     for sentence in texts:
         # print(sentence)

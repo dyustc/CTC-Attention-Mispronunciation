@@ -30,7 +30,7 @@ from dict.phonetic_dict import Phonetic
 parser = argparse.ArgumentParser(description="infer with only wav and transcript")
 
 parser.add_argument('--conf', 
-                    default="conf/ctc_config.1.yaml", 
+                    default="conf/ctc_config.0329.yaml", 
                     help='configure file for train and infer')
 
 parser.add_argument("--wav_transcript_path",
@@ -348,17 +348,19 @@ def infer(phonetic, word_dict, test_loader, device, model, decoder, vocab, test_
                 #     print(substution_fault)
                 #     print(deletion_fault)
 
-                print("id        : " + utt_list[x])
-                print("text      : " + utterance)
-                print("IPA       : " + word_dict[utt_list[x]]['ipa'])  
-                print("canonical : " + tmp2) 
-                print("            " + tmp3)
-                print("decode    : " + tmp1)
-                print("ins err   : " + " ".join(insertion_fault))
-                print("sub err   : " + " ".join(substution_fault))
-                print("del err   : " + " ".join(deletion_fault))
-                print('complete  : ' + str(correct_cnt) + '/'+ str(correct_cnt + del_sub_cnt))
-                print('score     : ' + str(score))
+                print("id     : " + utt_list[x])
+                print(utt_list[x] + ": " + utterance)
+                print(word_dict[utt_list[x]]['ipa'])
+                print(phonetic.api_word_translation(utterance))
+                # phonetic.api_word_phrase_tts(utterance, accent='Default', speed=0.7)
+                print(tmp2) 
+                print(tmp3)
+                print(tmp1)
+                print("ins err: " + " ".join(insertion_fault))
+                print("sub err: " + " ".join(substution_fault))
+                print("del err: " + " ".join(deletion_fault))
+                print('Comp.  : ' + str(correct_cnt) + '/'+ str(correct_cnt + del_sub_cnt))
+                print('score  : ' + str(score))
                 print("")
                 
                 total_correct_cnt += correct_cnt
@@ -468,11 +470,6 @@ def main():
     else:
         phonetic = Phonetic()
 
-    if phoneme_frd == 'phonemizer':
-        phonetic_generator = phonetic.phonemizer_sentence
-    else:
-        phonetic_generator = phonetic.g2p_ex_sentence
-
     can_transcript_words_dict = dict()
 
     opts, device, model, decoder, vocab = infer_init()
@@ -544,17 +541,20 @@ def main():
             with open(text_path,'r') as f:
                 for utterance in f.readlines():
                     w.write(utt_id + " " + utterance + "\n")
-                    # print(utterance)
-                    can_transcript_phns_ipa = phonetic_generator(utterance, False, True)
+                    can_transcript_phns_ipa = phonetic.api_word_phonetic(utterance)
+                    can_transcript_phns = phonetic.api_word_phones_cmu(utterance)
+                    parts_ = can_transcript_phns.split(' ')
+                    parts_ = [p.rstrip(string.digits) if p not in ['ER0', 'AH0'] else p for p in parts_]
                     
-                    can_transcript_phns, phns = phonetic_generator(utterance, True, True)
-                    parts = can_transcript_phns.split(' ')
-                    parts = [p.rstrip(string.digits).lower() for p in parts]
+                    parts = [p.lower() for p in parts_]
                     can_transcript_phns_for_models = ' '.join(parts)
+                    
+                    parts = [phonetic.cmu_to_ipa_wiki[p] for p in parts_]
 
                 can_transcript_words_dict[utt_id] = {
                     'ipa': can_transcript_phns_ipa,
-                    'ipa_phns' : phns
+                    'cmu_phns' : can_transcript_phns,
+                    'ipa_phns' : parts
                 }
         
         w4.write(utt_id + " " + can_transcript_phns_for_models + "\n" )
