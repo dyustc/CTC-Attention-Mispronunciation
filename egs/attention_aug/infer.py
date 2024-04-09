@@ -281,7 +281,8 @@ def infer_data_init(opts, vocab):
     
 def infer(phonetic, word_dict, test_loader, device, model, decoder, vocab, test_transcipt_dict, use_ipa):    
     total_correct_cnt = 0
-    total_cnt = 0 
+    total_cnt = 0
+    total_insertion_cnt = 0
     w1 = open(args.wav_transcript_path + "/decode_seq.txt",'w+')
     
     with torch.no_grad():
@@ -352,7 +353,7 @@ def infer(phonetic, word_dict, test_loader, device, model, decoder, vocab, test_
                 print(utt_list[x] + ": " + utterance)
                 print(word_dict[utt_list[x]]['ipa'])
                 print(phonetic.api_word_translation(utterance))
-                # phonetic.api_word_phrase_tts(utterance, accent='Default', speed=0.7)
+                # phonetic.api_word_phrase_tts(utterance, accent='AU', speed=0.7)
                 print(tmp2) 
                 print(tmp3)
                 print(tmp1)
@@ -365,9 +366,10 @@ def infer(phonetic, word_dict, test_loader, device, model, decoder, vocab, test_
                 
                 total_correct_cnt += correct_cnt
                 total_cnt += correct_cnt + del_sub_cnt
+                total_insertion_cnt += len(insertion_fault)
                 w1.write(utt_list[x] + " " + " ".join(phones_decoded) + "\n")    
     w1.close()
-    return total_correct_cnt, total_cnt
+    return total_correct_cnt, total_cnt, total_insertion_cnt
 
 def read_phonemes_from_transcript(can_phn_path):
     can_transcript_phns = []
@@ -572,8 +574,8 @@ def main():
     subprocess.check_output(cmd, shell=True, stderr=subprocess.STDOUT)
     
     test_loader, test_transcipt_dict = infer_data_init(opts, vocab)
-    c1, c2 = infer(phonetic, can_transcript_words_dict, test_loader, device, model, decoder, vocab, test_transcipt_dict, use_ipa)
-    print(c1, c2)
+    c1, c2, c3 = infer(phonetic, can_transcript_words_dict, test_loader, device, model, decoder, vocab, test_transcipt_dict, use_ipa)
+    print(c1, c2, c3)
     # remove denoise dir
     shutil.rmtree(denoised_dir)
     os.remove(tmp_path+"/wrd.txt")

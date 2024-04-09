@@ -9,7 +9,7 @@ import os
 import warnings
 import platform
 import time
-# from melo.api import TTS
+from melo.api import TTS
 
 ECDICT_PATH = os.path.abspath('/'.join([os.path.dirname(__file__), '..', '..', '..', 'ECDICT']))
 sys.path.append(ECDICT_PATH)
@@ -105,7 +105,7 @@ class Phonetic(object):
 
         self.speed = 0.7
         self.accent ='Default'
-        # self.tts_model = TTS(language='EN', device='cpu')
+        self.tts_model = TTS(language='EN', device='cpu')
 
     def load_ecdict(self, reload = False) -> None:
         if self.dc.__len__() == 0 or reload:           
