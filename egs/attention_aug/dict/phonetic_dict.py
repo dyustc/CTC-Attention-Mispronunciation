@@ -9,7 +9,7 @@ import os
 import warnings
 import platform
 import time
-from melo.api import TTS
+# from melo.api import TTS
 
 ECDICT_PATH = os.path.abspath('/'.join([os.path.dirname(__file__), '..', '..', '..', 'ECDICT']))
 sys.path.append(ECDICT_PATH)
@@ -105,12 +105,15 @@ class Phonetic(object):
 
         self.speed = 0.7
         self.accent ='Default'
-        self.tts_model = TTS(language='EN', device='cpu')
+        # self.tts_model = TTS(language='EN', device='cpu')
 
     def load_ecdict(self, reload = False) -> None:
         if self.dc.__len__() == 0 or reload:           
             csvname = os.path.join(ECDICT_PATH, 'ecdict.csv')
             self.dc = DictCsv(csvname)
+        
+        self.dc.update('cat', {'translation' : 'n. 猫，猫科动物'})
+        self.dc.register('take chance', {'translation' : '冒险，抓住机会'})
         
         return
    
@@ -168,7 +171,7 @@ class Phonetic(object):
     def dc_dict(self, text) -> dict:
         self.load_ecdict()
         text = text.strip()
-        result = self.dc.query(text.lower())
+        result = self.dc.query(text)
         # fields = [
         #     'word', 
         #     'translation', 
@@ -599,7 +602,7 @@ def main():
     words = words0 + words1 + words2 + words3 + words4 + words5
     words = words + words4 + words6 + words7 + words8 + words9 + words10 + words11 + words12 + words13
     words = words + ['class','caught', 'hurt', 'heart']
-    phrases = ["makes up", "pass for", "about time", "get away with", 'long time no see', 'take chance', 'shake it off']
+    phrases = ["make up", "pass for", "about time", "get away with", 'long time no see', 'take chance', 'shake it off', 'shake off']
     
     texts = [
         "I refuse to collect the refuse around here.", # homograph
@@ -614,6 +617,8 @@ def main():
 
     words = ['vocabulary', 'gather', 'about', 'through', 'rough', 'content', 'magazine', 'accept', 'talked', 'bananas',
              'wishes', 'OPPO', 'suburban', 'outstanding', 'geology', 'dashing', 'longtimenosee', 'phoneme', 'thorough', 'Toronto']
+    
+    words = ['cat', 'cats', 'CAT', 'chance']
 
     start = time.time()
     print(start - t0)
@@ -647,7 +652,20 @@ def main():
         # print(s2_1)
         # print(s3_1)
         # print(word, s1, s2, s3, s4, s1 == s2)
-    exit()
+    # exit()
+    for phrase in phrases:
+        # s1 = phonetic.phonemizer_phrase_sentence(phrase, 'us')
+        # s2 = phonetic.phonemizer_phrase_sentence(phrase, 'br')
+        syllables = phonetic.api_phrase_sentence_phonetic(phrase)
+        phones = phonetic.api_phrase_sentence_phones_cmu(phrase)
+        text = phonetic.api_phrase_translation(phrase)
+        # phonetic.api_word_phrase_tts(phrase, 'BR', speed=1.0)
+        # print(phrase, s1, s2)
+        print(phrase, syllables)
+        print(phones)
+        print(text)
+        print()
+    # exit()
     #sentence
     for sentence in texts:
         # print(sentence)
@@ -662,19 +680,7 @@ def main():
         print("")
         # print(phonetic.g2p(sentence, False))
     # exit()
-    for phrase in phrases:
-        # s1 = phonetic.phonemizer_phrase_sentence(phrase, 'us')
-        # s2 = phonetic.phonemizer_phrase_sentence(phrase, 'br')
-        syllables = phonetic.api_phrase_sentence_phonetic(phrase)
-        phones = phonetic.api_phrase_sentence_phones_cmu(phrase)
-        text = phonetic.api_phrase_translation(phrase)
-        phonetic.api_word_phrase_tts(phrase, 'BR', speed=1.0)
-        # print(phrase, s1, s2)
-        print(phrase, syllables)
-        print(phones)
-        print(text)
-        print()
-    # exit()
+
 
     
     print(time.time() - start)
