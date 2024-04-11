@@ -97,7 +97,8 @@ class Phonetic(object):
 
         self.g2p_backend = G2p()
         self.backend_us = EspeakBackend('en-us', with_stress = True)
-        self.backend_br = EspeakBackend('en', with_stress = True)
+        self.backend_br = EspeakBackend('en-gb', with_stress = True)
+        # print(EspeakBackend.supported_languages())
 
         self.wav_dir = os.path.join(os.path.dirname(__file__), 'wav')
         if not os.path.exists(self.wav_dir):
