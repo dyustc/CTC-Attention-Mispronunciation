@@ -70,15 +70,16 @@ def del_repeat_sil(phn_lst):
 g_pairs = {
     # according to english/american phonetic symbol annotation
     '0' : {
-        'aa' : ['aa r', 'ae', 'ao'],
-        'er0' : 'ah0',
+        'aa r' : 'aa',
+        'ae' : 'aa',
         'ah0' : 'er0',
-        'ah0 r' : 'er0',
+        'er0' : ['ah0', 'ah0 r'],
         'ao' : 'aa',
+        'aa' : 'ao',
         'er r' : 'er',
-        'ih ah0' : 'ih r',
-        'eh ah0' : 'eh r',
-        'uh ah0' : 'uh r',
+        'ih r' : 'ih ah0',
+        'eh r' : 'eh ah0',
+        'uh r' : 'uh ah0',
     },
     
     # according to long/short vowel
@@ -91,7 +92,7 @@ g_pairs = {
 
     # according to actual false postive cases
     '2' : {
-        'er0' : ['er0 r', 'ah0 r'],
+        'er0' : 'er0 r',
     },
 
     # according to american accent
@@ -102,7 +103,17 @@ g_pairs = {
         'ah' : 'ah0',
     },
 
+    # phones can be easily mixed up
     '4' : {
+        'v'  : 'w',
+        'w'  : 'v',
+        'ng' : 'n',
+        'n'  : 'ng',
+        'z'  : 'dh',
+        'th' : 's',
+    },
+
+    '5' : {
         'ae' : 'eh',
         'eh' : 'ae',
         'ih' : 'iy',
@@ -127,7 +138,7 @@ g_pairs = {
         'z'  : 'dh',
     },
 
-    '5' : {
+    '6' : {
         'z'  : 's',
     }
 }
@@ -141,15 +152,23 @@ def ipa_pair_rule_generate(mapping, level = 0):
             else:
                 if isinstance(cmu_pairs[k], list):
                     if isinstance(v, list):
-                        cmu_pairs[k] += v
+                        for e in v:
+                            if e not in cmu_pairs[k]:
+                                cmu_pairs[k].append(e)
                     else:
-                        cmu_pairs[k].append(v)
+                        if v not in cmu_pairs[k]:
+                            cmu_pairs[k].append(v)
                 else:
                     if isinstance(v, list):
                         cmu_pairs[k] = [cmu_pairs[k]]
-                        cmu_pairs[k] += v
+                        for e in v:
+                            if e not in cmu_pairs[k]:
+                                cmu_pairs[k].append(e)
                     else:
-                        cmu_pairs[k] = [cmu_pairs[k], v]
+                        cmu_pairs[k] = [cmu_pairs[k]]
+                        if v not in cmu_pairs[k]:
+                            cmu_pairs[k].append(v)
+
     # print(cmu_pairs)
     ipa_pairs = dict()
     for k in cmu_pairs.keys():
@@ -450,7 +469,7 @@ def infer(phonetic, word_dict, test_loader, device, model, decoder, vocab, test_
                 decoded_nosil[x] = decoded_nosil[x].replace('err', '')
                 decoded_nosil[x] = decoded_nosil[x].replace('  ', ' ')
                 # TODO:
-                decoded_nosil[x] = post_del_repeat(decoded_nosil[x])
+                # decoded_nosil[x] = post_del_repeat(decoded_nosil[x])
 
                 _, dc_path = decoder.wer(decoded_nosil[x], canonicals_nosil[x])
 
