@@ -19,6 +19,7 @@ from g2p_en import G2p
 import soundfile as sf
 from termcolor import colored, cprint
 import librosa
+import warnings
 
 sys.path.append('./')
 from models.model_ctc import *
@@ -67,10 +68,41 @@ def del_repeat_sil(phn_lst):
     return tmp
 
 g_pairs = {
+    # according to english/american phonetic symbol annotation
     '0' : {
-        'ah' : 'ae',
-        },
+        'aa' : ['aa r', 'ae', 'ao'],
+        'er0' : 'ah0',
+        'ah0' : 'er0',
+        'ah0 r' : 'er0',
+        'ao' : 'aa',
+        'er r' : 'er',
+        'ih ah0' : 'ih r',
+        'eh ah0' : 'eh r',
+        'uh ah0' : 'uh r',
+    },
+    
+    # according to long/short vowel
     '1' : {
+        'ih' : 'iy',
+        'iy' : 'ih',
+        'uh' : 'uw',
+        'uw' : 'uh',
+    },
+
+    # according to actual false postive cases
+    '2' : {
+        'er0' : ['er0 r', 'ah0 r'],
+    },
+
+    # according to american accent
+    '3' : {
+        'uh' : 'ah0',
+        'ih' : 'ah0',
+        'ae' : 'ah0',
+        'ah' : 'ah0',
+    },
+
+    '4' : {
         'ae' : 'eh',
         'eh' : 'ae',
         'ih' : 'iy',
@@ -91,66 +123,159 @@ g_pairs = {
         'ao' : 'aa',
         'm'  : 'n',
         'n'  : 'm',
-        # 'n'  : 'ng',
-        # 'z'  : 'dh',
+        'n'  : 'ng',
+        'z'  : 'dh',
     },
-    '2' : {
+
+    '5' : {
         'z'  : 's',
     }
 }
 
-def mild1(s1, s2, s3, level = 1):
-    pairs = dict()
+def ipa_pair_rule_generate(mapping, level = 0):
+    cmu_pairs = dict()
     for i in range(level+1):
-        d = g_pairs[str(i)]
-        for k in d:
-            if k not in pairs:
-                if type(d[k]) == list:
-                    pairs[k] = d[k]
-                else:
-                    pairs[k] = [d[k]]
+        for k, v in g_pairs[str(i)].items():
+            if k not in cmu_pairs:
+                cmu_pairs[k] = v
             else:
-                if type(d[k]) == list:
-                    pairs[k] += d[k]
-                else:
-                    pairs[k].append(d[k])
-
-    l1 = s1.split(' ')
-    l2 = s2.split(' ')
-    l3 = s3.split(' ')
-
-    i, j, k = 0, 0, 0
-    while i < len(l1) and j < len(l2) and k < len(l3):
-        while i < len(l1) and not l1[i]:
-            i += 1
-        while j < len(l2) and not l2[j]:
-            j += 1
-        while k < len(l3) and not l3[k]:
-            k += 1
-        
-        if i < len(l1) and j < len(l2) and k < len(l3):
-            if l1[i] in pairs and l2[j] == 'S' and l3[k] in pairs[l1[i]]:
-                l2[j] = '-'
-                if len(l3[k]) == len(l1[i]):
-                    l3[k] = l1[i]
-                else:
-                    if len(l3[k]) < len(l1[i]):
-                        if k+1 < len(l3):
-                            l3[k] = l1[i]
-                            l3.pop(k+1)
+                if isinstance(cmu_pairs[k], list):
+                    if isinstance(v, list):
+                        cmu_pairs[k] += v
                     else:
-                        if i+1 < len(l1):
-                            l1.pop(i+1)
-                            l3[k] = l1[i]
+                        cmu_pairs[k].append(v)
+                else:
+                    if isinstance(v, list):
+                        cmu_pairs[k] = [cmu_pairs[k]]
+                        cmu_pairs[k] += v
+                    else:
+                        cmu_pairs[k] = [cmu_pairs[k], v]
+    # print(cmu_pairs)
+    ipa_pairs = dict()
+    for k in cmu_pairs.keys():
+        if k.upper() in mapping:
+            new_g = mapping[k.upper()]
+        else:
+            parts = k.split(' ')
+            new_g = ' '.join([mapping[p.upper()] for p in parts])
+        
+        if isinstance(cmu_pairs[k], list):
+            ipa_pairs[new_g] = list()
+            for e in cmu_pairs[k]:
+                if e.upper() in mapping:
+                    ipa_pairs[new_g].append(mapping[e.upper()])
+                else:
+                    parts = e.split(' ')
+                    ipa_pairs[new_g].append(' '.join([mapping[p.upper()] for p in parts]))
+        else:
+            if cmu_pairs[k].upper() in mapping:
+                ipa_pairs[new_g] = mapping[cmu_pairs[k].upper()]
+            else:
+                parts = cmu_pairs[k].split(' ')
+                ipa_pairs[new_g] = ' '.join([mapping[p.upper()] for p in parts])
+    # print(ipa_pairs)
+    return ipa_pairs
+
+def post_revise_to_rule(cannoicals, decodes, dc, rules):
+    assert len(cannoicals) == len(decodes) == len(dc)
+
+    i = 0
+    altered = False
+    while i < len(dc):
+        if i + 2 <= len(dc):
+            if dc[i] == dc[i+1] == '-':
+                pass
+            else:
+                can_tmp = " ".join(cannoicals[i:i+2])
+                dec_tmp = " ".join(decodes[i:i+2])
+                if 'I' not in can_tmp:
+                    if can_tmp not in rules:
+                        pass
+                    else:
+                        alternatives = rules[can_tmp]
+                        if dec_tmp in alternatives:
+                            dc[i] = '-'
+                            dc[i+1] = '-'
+                            decodes[i] = cannoicals[i]
+                            decodes[i+1] = cannoicals[i+1]
+                            altered = True
+                            i += 2
+                            continue
+                        else:
+                            if decodes[i] == 'D':
+                                left = decodes[i+1]
+                            elif decodes[i+1] == 'D':
+                                left = decodes[i]
+                            else:
+                                left = None
+                            
+                            if left and left in alternatives:
+                                dc[i] = '-'
+                                dc[i+1] = '-'
+                                decodes[i] = cannoicals[i]
+                                decodes[i+1] = cannoicals[i+1]
+                                altered = True
+                                i += 2
+                                continue
+                elif can_tmp == "I I":
+                    pass
+                else:
+                    if cannoicals[i] == 'I':
+                        left = cannoicals[i+1]
+                    else:
+                        left = cannoicals[i]
+                    
+                    if left not in rules:
+                        pass
+                    else:
+                        alternatives = rules[left]
+                        if dec_tmp in alternatives:
+                            dc[i] = '-'
+                            decodes[i] = left
+                            cannoicals[i] = left
+
+                            dc.pop(i+1)
+                            decodes.pop(i+1)
+                            cannoicals.pop(i+1)
+
+                            altered = True
+                            i += 1
+                            continue
+        
+        if dc[i] in ['-', 'D', 'I']:
+            pass
+        else:
+            if cannoicals[i] not in rules:
+                pass
+            else:
+                alternatives = rules[cannoicals[i]]
+                if decodes[i] in alternatives:
+                    dc[i] = '-'
+                    decodes[i] = cannoicals[i]
+                    altered = True
+
         i += 1
-        j += 1
-        k += 1
+    
+    if altered:
+        warnings.warn("Some phonemes are revised according to the rules")
 
-    s1 = ' '.join(l1)
-    s2 = ' '.join(l2)
-    s3 = ' '.join(l3)
+    assert len(cannoicals) == len(decodes) == len(dc)
 
-    return s1, s2, s3
+    return cannoicals, decodes, dc
+
+def post_del_repeat(decodes):
+    parts = decodes.split(' ')
+    ans = []
+    i = 0
+    while i < len(parts):
+        if i + 1 < len(parts) and parts[i] == parts[i+1]:
+            i += 1
+            continue
+        else:
+            ans.append(parts[i])
+        i += 1
+    
+    return " ".join(ans)
 
 def print_aligned_string(s1, s2, l):
     s1 = [p+" " if len(p) == 1 else p for p in s1]
@@ -284,6 +409,7 @@ def infer(phonetic, word_dict, test_loader, device, model, decoder, vocab, test_
     total_cnt = 0
     total_insertion_cnt = 0
     w1 = open(args.wav_transcript_path + "/decode_seq.txt",'w+')
+    ipa_mapping = ipa_pair_rule_generate(phonetic.cmu_to_ipa_wiki, level=3)
     
     with torch.no_grad():
         for data in test_loader:
@@ -323,6 +449,9 @@ def infer(phonetic, word_dict, test_loader, device, model, decoder, vocab, test_
                 utterance = test_transcipt_dict[utt_list[x]]
                 decoded_nosil[x] = decoded_nosil[x].replace('err', '')
                 decoded_nosil[x] = decoded_nosil[x].replace('  ', ' ')
+                # TODO:
+                decoded_nosil[x] = post_del_repeat(decoded_nosil[x])
+
                 _, dc_path = decoder.wer(decoded_nosil[x], canonicals_nosil[x])
 
                 phones_decoded = [c for c in decoded_nosil[x].split(' ') if c]
@@ -333,6 +462,8 @@ def infer(phonetic, word_dict, test_loader, device, model, decoder, vocab, test_
                     phones_canonicals = [phonetic.cmu_to_ipa_wiki.get(c.upper(), c) for c in phones_canonicals]
 
                 phones_decoded, phones_canonicals, dc_path = align_canonical_decoded(phones_decoded, phones_canonicals, dc_path)
+                phones_canonicals, phones_decoded, dc_path = post_revise_to_rule(phones_canonicals, phones_decoded, dc_path, ipa_mapping)
+
                 tmp1, tmp2, tmp3 = print_aligned_string(phones_decoded, phones_canonicals, dc_path) 
                 
                 del_sub_cnt = sum([1 if c == 'D' or c == 'S' else 0 for c in dc_path])
