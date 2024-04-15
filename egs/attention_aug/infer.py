@@ -88,6 +88,8 @@ g_pairs = {
         'iy' : 'ih',
         'uh' : 'uw',
         'uw' : 'uh',
+        'ah0' : 'er',
+        'er' : 'ah0'
     },
 
     # according to actual false postive cases
