@@ -694,6 +694,10 @@ def main():
             
             with open(text_path,'r') as f:
                 for utterance in f.readlines():
+                    utterance = utterance.strip()
+                    if not utterance:
+                        continue
+
                     w.write(utt_id + " " + utterance + "\n")
                     can_transcript_phns_ipa = phonetic.api_word_phonetic(utterance)
                     can_transcript_phns = phonetic.api_word_phones_cmu(utterance)

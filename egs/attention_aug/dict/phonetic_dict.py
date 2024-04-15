@@ -619,7 +619,7 @@ def main():
     words = ['vocabulary', 'gather', 'about', 'through', 'rough', 'content', 'magazine', 'accept', 'talked', 'bananas',
              'wishes', 'OPPO', 'suburban', 'outstanding', 'geology', 'dashing', 'longtimenosee', 'phoneme', 'thorough', 'Toronto']
     
-    words = ['cat', 'cats', 'CAT', 'chance']
+    words = ['cat', 'cats', 'CAT', 'chance', 'really']
 
     start = time.time()
     print(start - t0)
