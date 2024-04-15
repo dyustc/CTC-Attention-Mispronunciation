@@ -469,7 +469,7 @@ def infer(phonetic, word_dict, test_loader, device, model, decoder, vocab, test_
                 decoded_nosil[x] = decoded_nosil[x].replace('err', '')
                 decoded_nosil[x] = decoded_nosil[x].replace('  ', ' ')
                 # TODO:
-                # decoded_nosil[x] = post_del_repeat(decoded_nosil[x])
+                decoded_nosil[x] = post_del_repeat(decoded_nosil[x])
 
                 _, dc_path = decoder.wer(decoded_nosil[x], canonicals_nosil[x])
 
