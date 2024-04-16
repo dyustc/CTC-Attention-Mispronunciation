@@ -436,13 +436,16 @@ class Phonetic(object):
         else:
             return self._ipa_phonemizer_normalize(phonetic, style)
 
-    def phonemizer_phrase_sentence(self, text, style='us') -> str:
-        phonetic = self.phonemizer(text, style, False)
-        
-        parts = phonetic.split(' ')
-        phonetic = ' '.join([self._stress_normalize(p) for p in parts])
+    def phonemizer_phrase_sentence(self, text, style='us', to_phones = False) -> str:
+        phonetic = self.phonemizer(text, style, to_phones)
 
-        return phonetic
+        if to_phones:
+            return phonetic
+        else:
+            parts = phonetic.split(' ')
+            phonetic = ' '.join([self._ipa_phonemizer_normalize(p, style) for p in parts])
+
+            return phonetic
 
     def cmu_dict(self, word, to_ipa = False) -> str:
         self.load_cmudict()
@@ -503,7 +506,18 @@ class Phonetic(object):
 
     def api_phrase_sentence_phones_cmu(self, text) -> str:
         p2 = self.g2p_sentence(text)
-        return p2
+        parts = p2.split(' ')
+        parts = [p for p in parts if p.strip()]
+        p2 = ' '.join(parts)
+
+        p3 = self.phonemizer_phrase_sentence(text, 'us', True)
+
+        if p2 != p3:
+            warnings.warn(f"G2P and Phonemizer phonetic not match for text: {text}.")
+            print(p2)
+            print(p3)
+        
+        return p3
 
     def api_word_phrase_tts(self, text, accent = 'Default', speed = None) -> str:
         assert accent in ['Default', 'US', 'BR', 'AU', 'IN']
@@ -512,8 +526,6 @@ class Phonetic(object):
 
         model = self.tts_model
         speaker_ids = model.hps.data.spk2id
-        # print(speaker_ids)
-        # exit()
         
         text = text.strip()
         
@@ -530,7 +542,7 @@ class Phonetic(object):
 
         return output_path
     
-    def api_sentence_tts(self, text, accent = 'Default', speed = None) -> str:
+    def api_sentence_tts(self, text, accent = 'AU', speed = None) -> str:
         assert accent in ['Default', 'US', 'BR', 'AU', 'IN']
         if not speed:
             speed = self.speed + 0.1
@@ -603,8 +615,11 @@ def main():
     words = words0 + words1 + words2 + words3 + words4 + words5
     words = words + words4 + words6 + words7 + words8 + words9 + words10 + words11 + words12 + words13
     words = words + ['class','caught', 'hurt', 'heart']
-    phrases = ["make up", "pass for", "about time", "get away with", 'long time no see', 'take chance', 'shake it off', 'shake off']
-    
+    phrases = ["make up", "pass for", "about time", "get away with", 'long time no see', 
+               'take chance', 'shake it off', 'shake off', 'be able to', 'go forward',
+               'tell about', 'let it go', 'work out', 'wake up', 'whats up',
+               'take care', 'at school', 'in time', 'on the clock', 'for that']
+    phrases = ['the odds']
     texts = [
         "I refuse to collect the refuse around here.", # homograph
         "I'm an activationist.",
@@ -619,8 +634,8 @@ def main():
     words = ['vocabulary', 'gather', 'about', 'through', 'rough', 'content', 'magazine', 'accept', 'talked', 'bananas',
              'wishes', 'OPPO', 'suburban', 'outstanding', 'geology', 'dashing', 'longtimenosee', 'phoneme', 'thorough', 'Toronto']
     
-    words = ['cat', 'cats', 'CAT', 'chance', 'really']
-
+    # words = ['cat', 'cats', 'CAT', 'chance', 'really']
+    words = []
     start = time.time()
     print(start - t0)
     for word in words:
@@ -660,13 +675,13 @@ def main():
         syllables = phonetic.api_phrase_sentence_phonetic(phrase)
         phones = phonetic.api_phrase_sentence_phones_cmu(phrase)
         text = phonetic.api_phrase_translation(phrase)
-        # phonetic.api_word_phrase_tts(phrase, 'BR', speed=1.0)
+        # phonetic.api_word_phrase_tts(phrase)
         # print(phrase, s1, s2)
         print(phrase, syllables)
         print(phones)
         print(text)
         print()
-    # exit()
+    exit()
     #sentence
     for sentence in texts:
         # print(sentence)

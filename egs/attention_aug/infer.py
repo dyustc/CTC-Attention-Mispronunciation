@@ -699,9 +699,20 @@ def main():
                         continue
 
                     w.write(utt_id + " " + utterance + "\n")
-                    can_transcript_phns_ipa = phonetic.api_word_phonetic(utterance)
-                    can_transcript_phns = phonetic.api_word_phones_cmu(utterance)
+                    
+                    is_word = True
+                    if ' ' in utterance:
+                        is_word = False
+                    
+                    if is_word:
+                        can_transcript_phns_ipa = phonetic.api_word_phonetic(utterance)
+                        can_transcript_phns = phonetic.api_word_phones_cmu(utterance)
+                    else:
+                        can_transcript_phns_ipa = phonetic.api_phrase_sentence_phonetic(utterance)
+                        can_transcript_phns = phonetic.api_phrase_sentence_phones_cmu(utterance)
+                    
                     parts_ = can_transcript_phns.split(' ')
+                    parts_ = [p for p in parts_ if p.strip()]
                     parts_ = [p.rstrip(string.digits) if p not in ['ER0', 'AH0'] else p for p in parts_]
                     
                     parts = [p.lower() for p in parts_]
