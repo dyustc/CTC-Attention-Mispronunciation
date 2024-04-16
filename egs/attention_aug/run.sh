@@ -11,10 +11,10 @@ finish=4
 l2arctic_dir="/data2/daiyi/dataset/l2arctic" 
 timit_dir='/data2/daiyi/dataset/Timit/data'
 phoneme_map='60-41'
-feat_dir='data0329'  
+feat_dir='data0412'  
 prepare_dir=`pwd`/$feat_dir                       #dir to save feature
 feat_type='fbank'                          #fbank, mfcc, spectrogram
-config_file='conf/ctc_config.0329.yaml'
+config_file='conf/ctc_config.0412.yaml'
 
 if [ ! -z $1 ]; then
     stage=$1

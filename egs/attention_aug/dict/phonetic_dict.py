@@ -9,7 +9,8 @@ import os
 import warnings
 import platform
 import time
-# from melo.api import TTS
+from melo.api import TTS
+import torch
 
 ECDICT_PATH = os.path.abspath('/'.join([os.path.dirname(__file__), '..', '..', '..', 'ECDICT']))
 sys.path.append(ECDICT_PATH)
@@ -106,7 +107,11 @@ class Phonetic(object):
 
         self.speed = 0.7
         self.accent ='Default'
-        # self.tts_model = TTS(language='EN', device='cpu')
+        use_cuda = torch.cuda.is_available() 
+        # use_cuda = False
+        device = 'cuda:0' if use_cuda else 'cpu'
+        print('tts use cuda: ', use_cuda)
+        self.tts_model = TTS(language='EN', device=device)
 
     def load_ecdict(self, reload = False) -> None:
         if self.dc.__len__() == 0 or reload:           

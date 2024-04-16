@@ -365,9 +365,9 @@ def infer_init():
     for k,v in conf.items():
         setattr(opts, k, v)
 
-    use_cuda = opts.use_gpu
-    use_cuda = False
-    #print(use_cuda)
+    use_cuda = opts.use_gpu and torch.cuda.is_available()
+    # use_cuda = False
+    print('mdd use cuda: ', use_cuda)
     device = torch.device('cuda:0') if use_cuda else torch.device('cpu')
     
     model_path = os.path.join(opts.checkpoint_dir, opts.exp_name, 'ctc_best_model.pkl')
@@ -505,7 +505,7 @@ def infer(phonetic, word_dict, test_loader, device, model, decoder, vocab, test_
                 print(utt_list[x] + ": " + utterance)
                 print(word_dict[utt_list[x]]['ipa'])
                 print(phonetic.api_word_translation(utterance))
-                # phonetic.api_word_phrase_tts(utterance, accent='AU', speed=0.7)
+                phonetic.api_word_phrase_tts(utterance, accent='Default', speed=0.7)
                 print(tmp2) 
                 print(tmp3)
                 print(tmp1)
@@ -760,7 +760,7 @@ def main():
     rtf3 = (t3-t2) / total_wav_time
     rtf4 = (end-t3) / total_wav_time
     print("RTF: %.4f, time used for decode %d sentences: %.4f seconds, total wav length: %.4f seconds" % (rtf, cnt, time_used, total_wav_time))
-    print("init model time: %.4f, init phone time: %.4f, denoise time: %.4f, mdd infer time: %.4f" %(rtf1, rtf3, rtf2, rtf4))
+    print("init model time: %.4f, init phone time: %.4f, denoise time: %.4f, mdd+tts infer time: %.4f" %(rtf1, rtf3, rtf2, rtf4))
     print("process time: %.4f" % (rtf2 + rtf4))
     return 0
 
