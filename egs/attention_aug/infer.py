@@ -418,10 +418,14 @@ def infer_data_init(opts, vocab):
     
     test_scp_path = args.wav_transcript_path + "/fbank.scp"
     test_trans_path = args.wav_transcript_path + "/transcript_phn.txt"
-
+    # print(vocab.word2index)
+    # exit()
     # Note: no label dataset format, so use test_trans_path as label, won't be used anyway
     test_dataset = SpeechDataset(vocab, test_scp_path, test_trans_path, test_trans_path, opts)
-    test_loader = SpeechDataLoader(test_dataset, batch_size=opts.batch_size, shuffle=False, num_workers=opts.num_workers, pin_memory=False)
+
+    # batch_size = opts.batch_size
+    batch_size = 1
+    test_loader = SpeechDataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=opts.num_workers, pin_memory=False)
     
     return test_loader, test_transcipt_dict
     
@@ -437,6 +441,12 @@ def infer(phonetic, word_dict, test_loader, device, model, decoder, vocab, test_
             inputs, input_sizes, _, _, trans, trans_sizes, utt_list = data
             inputs = inputs.to(device)
             trans = trans.to(device)
+            
+            # TODO: padding to remove much insertion err
+            p1d = (0, 1)
+            trans = torch.nn.functional.pad(trans, p1d, "constant", 2)
+            # p1d = (0, 1)
+            # trans = torch.nn.functional.pad(trans, p1d, "constant", 0)
             
             probs = model(inputs,trans)
 
@@ -505,7 +515,7 @@ def infer(phonetic, word_dict, test_loader, device, model, decoder, vocab, test_
                 print(utt_list[x] + ": " + utterance)
                 print(word_dict[utt_list[x]]['ipa'])
                 print(phonetic.api_word_translation(utterance))
-                phonetic.api_word_phrase_tts(utterance, accent='Default', speed=0.7)
+                # phonetic.api_word_phrase_tts(utterance, accent='Default', speed=0.7)
                 print(tmp2) 
                 print(tmp3)
                 print(tmp1)
