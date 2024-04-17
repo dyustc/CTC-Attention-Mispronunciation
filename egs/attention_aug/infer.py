@@ -20,6 +20,7 @@ import soundfile as sf
 from termcolor import colored, cprint
 import librosa
 import warnings
+import json
 
 sys.path.append('./')
 from models.model_ctc import *
@@ -35,8 +36,13 @@ parser.add_argument('--conf',
                     help='configure file for train and infer')
 
 parser.add_argument("--wav_transcript_path",
-                    default="/data2/daiyi/dataset/TXHC_EXTRA/wav",
+                    required=True,
                     help="path of input wav files")
+
+parser.add_argument("--output_dir",
+                    dest="output_dir",
+                    required=True,
+                    help="path of output log files")
 
 # could be from other sources
 parser.add_argument("-p", "--phonetic", 
@@ -510,11 +516,12 @@ def infer(phonetic, word_dict, test_loader, device, model, decoder, vocab, test_
                 #     print(insertion_fault)
                 #     print(substution_fault)
                 #     print(deletion_fault)
-
+                annotation = word_dict[utt_list[x]]['ipa']
+                translation = phonetic.api_word_translation(utterance)
                 print("id     : " + utt_list[x])
                 print(utt_list[x] + ": " + utterance)
-                print(word_dict[utt_list[x]]['ipa'])
-                print(phonetic.api_word_translation(utterance))
+                print(annotation)
+                print(translation)
                 # phonetic.api_word_phrase_tts(utterance, accent='Default', speed=0.7)
                 print(tmp2) 
                 print(tmp3)
@@ -525,6 +532,36 @@ def infer(phonetic, word_dict, test_loader, device, model, decoder, vocab, test_
                 print('Comp.  : ' + str(correct_cnt) + '/'+ str(correct_cnt + del_sub_cnt))
                 print('score  : ' + str(score))
                 print("")
+                
+                with open(args.output_dir + "/" + utt_list[x] + '.json','a') as w2:
+                    result = {
+                        'id' : utt_list[x],
+                        'utterance' : utterance,
+                        'annotation' : annotation,
+                        'translation' : translation,
+                        'alignment_1' : tmp2,
+                        'alignment_2' : tmp3,
+                        'alignment_3' : tmp1,
+                        'insertion_fault' : " ".join(insertion_fault),
+                        'substution_fault' : " ".join(substution_fault),
+                        'deletion_fault' : " ".join(deletion_fault),
+                        'completeness' : str(correct_cnt) + '/'+ str(correct_cnt + del_sub_cnt),
+                        'score' : str(score)
+                    }
+                    json.dump(result, w2, indent=2, ensure_ascii=False)
+                    # print("id     : " + utt_list[x], file=w2)
+                    # print(utt_list[x] + ": " + utterance, file=w2)
+                    # print(annotation, file=w2)
+                    # print(translation, file=w2)
+                    # print(tmp2, file=w2) 
+                    # print(tmp3, file=w2)
+                    # print(tmp1, file=w2)
+                    # print("ins err: " + , file=w2)
+                    # print("sub err: " + " ".join(substution_fault), file=w2)
+                    # print("del err: " + " ".join(deletion_fault), file=w2)
+                    # print('Comp.  : ' + str(correct_cnt) + '/'+ str(correct_cnt + del_sub_cnt), file=w2)
+                    # print('score  : ' + str(score), file=w2)
+                    # print("", file=w2)
                 
                 total_correct_cnt += correct_cnt
                 total_cnt += correct_cnt + del_sub_cnt
@@ -605,7 +642,19 @@ def main():
     
     t0 = time.time()
     tmp_path = args.wav_transcript_path
+    output_dir = args.output_dir
     
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    else:
+        files = glob.glob(output_dir + '/*')
+        for f in files:
+            os.remove(f)
+    
+    dict_log  = output_dir + "/dict.log"
+    with open(dict_log, 'w+') as f:
+        pass
+
     use_ipa = args.phonetic_format == 'ipa'
     phoneme_frd = args.phonetic
     
@@ -619,7 +668,7 @@ def main():
     else:
         args.textgrid_path = None # bypass
 
-    print(args.wav_transcript_path, use_ipa, phoneme_frd)
+    print(args.wav_transcript_path, use_ipa, phoneme_frd, dict_log, output_dir)
 
     total_wav_time = 0
     cnt = 0
@@ -627,12 +676,12 @@ def main():
     if system == 'Darwin':
         try:
             os.environ['PHONEMIZER_ESPEAK_LIBRARY'] = '/opt/homebrew/Cellar/espeak/1.48.04_1/lib/libespeak.dylib'
-            phonetic = Phonetic()
+            phonetic = Phonetic(dict_log)
         except:
             os.environ['PHONEMIZER_ESPEAK_LIBRARY'] = '/usr/local/Cellar/espeak/1.48.04_1/lib/libespeak.dylib'
-            phonetic = Phonetic()
+            phonetic = Phonetic(dict_log)
     else:
-        phonetic = Phonetic()
+        phonetic = Phonetic(dict_log)
 
     can_transcript_words_dict = dict()
 
@@ -756,9 +805,9 @@ def main():
     # remove denoise dir
     shutil.rmtree(denoised_dir)
     os.remove(tmp_path+"/wrd.txt")
-    os.remove(tmp_path+"/wav.scp")
     os.remove(tmp_path+"/transcript_phn.txt")
     os.remove(tmp_path+"/decode_seq.txt")
+    os.remove(tmp_path+"/wav.scp")
     os.remove(tmp_path+"/fbank.scp")
     os.remove(tmp_path+"/fbank.ark")
 

@@ -7,9 +7,10 @@ import sys
 import csv
 import os
 import warnings
+import logging
 import platform
 import time
-from melo.api import TTS
+# from melo.api import TTS
 import torch
 
 ECDICT_PATH = os.path.abspath('/'.join([os.path.dirname(__file__), '..', '..', '..', 'ECDICT']))
@@ -17,7 +18,7 @@ sys.path.append(ECDICT_PATH)
 from stardict import DictCsv
 
 class Phonetic(object):
-    def __init__(self) -> None:
+    def __init__(self, log_file = None) -> None:
         # This ipa mapping is done as the us syllable way.
         self.cmu_to_ipa_wiki = {
             "AA" : 'a',
@@ -111,7 +112,16 @@ class Phonetic(object):
         # use_cuda = False
         device = 'cuda:0' if use_cuda else 'cpu'
         print('tts use cuda: ', use_cuda)
-        self.tts_model = TTS(language='EN', device=device)
+        # self.tts_model = TTS(language='EN', device=device)
+        
+        if not log_file or not os.path.exists(log_file):
+            self.log_dir = os.path.join(os.path.dirname(__file__), 'log')
+            if not os.path.exists(self.log_dir):
+                os.makedirs(self.log_dir)
+            
+            log_file = os.path.join(self.log_dir, 'dict.log')
+        
+        logging.basicConfig(filename=log_file, level=logging.DEBUG, format='')
 
     def load_ecdict(self, reload = False) -> None:
         if self.dc.__len__() == 0 or reload:           
@@ -193,6 +203,7 @@ class Phonetic(object):
                 text_type = 'PHRASE'
             message = f"{text_type} '{text}' not found in dictionary."
             warnings.warn(message)
+            logging.warning(message)
             return {}
         else:
             return result
@@ -412,6 +423,7 @@ class Phonetic(object):
             if index >= len(phonetics):
                 message = f"Word {word} only found {len(phonetics)} in dictionary."
                 warnings.warn(message)
+                logging.warning(message)
                 index = 0
         
             phonetic = phonetics[index]
@@ -425,6 +437,7 @@ class Phonetic(object):
         
         if to_phones and style == 'br':
             warnings.warn("Britain phonemizer does not support to_phones option.")
+            logging.info("Britain phonemizer does not support to_phones option.")
             style = 'us'
         
         if style == 'us':
@@ -498,13 +511,15 @@ class Phonetic(object):
 
         if p1 and p1 != p2:
             warnings.warn(f"CMU Dict and G2P phonetic not match for word {word}.")
-            print(p1)
-            print(p2)
+            logging.warning(f"CMU Dict and G2P phonetic not match for word {word}.")
+            logging.info(p1)
+            logging.info(p2)
         
         if p2 != p3:
             warnings.warn(f"G2P and Phonemizer phonetic not match for word {word}.")
-            print(p2)
-            print(p3)
+            logging.warning(f"G2P and Phonemizer phonetic not match for word {word}.")
+            logging.info(p2)
+            logging.info(p3)
         
         # TODO: return p2 or p3, return p3 after the dataset is updated according to phonemizer 
         return p3
@@ -519,8 +534,9 @@ class Phonetic(object):
 
         if p2 != p3:
             warnings.warn(f"G2P and Phonemizer phonetic not match for text: {text}.")
-            print(p2)
-            print(p3)
+            logging.warning(f"G2P and Phonemizer phonetic not match for text: {text}.")
+            logging.info(p2)
+            logging.info(p3)
         
         return p3
 
@@ -624,7 +640,7 @@ def main():
                'take chance', 'shake it off', 'shake off', 'be able to', 'go forward',
                'tell about', 'let it go', 'work out', 'wake up', 'whats up',
                'take care', 'at school', 'in time', 'on the clock', 'for that']
-    phrases = ['the odds']
+    phrases = ['the odds', 'pass for', '7 am']
     texts = [
         "I refuse to collect the refuse around here.", # homograph
         "I'm an activationist.",
@@ -640,7 +656,7 @@ def main():
              'wishes', 'OPPO', 'suburban', 'outstanding', 'geology', 'dashing', 'longtimenosee', 'phoneme', 'thorough', 'Toronto']
     
     # words = ['cat', 'cats', 'CAT', 'chance', 'really']
-    words = []
+    words = ['today']
     start = time.time()
     print(start - t0)
     for word in words:
@@ -673,7 +689,7 @@ def main():
         # print(s2_1)
         # print(s3_1)
         # print(word, s1, s2, s3, s4, s1 == s2)
-    # exit()
+    exit()
     for phrase in phrases:
         # s1 = phonetic.phonemizer_phrase_sentence(phrase, 'us')
         # s2 = phonetic.phonemizer_phrase_sentence(phrase, 'br')
@@ -686,11 +702,11 @@ def main():
         print(phones)
         print(text)
         print()
-    exit()
+    # exit()
     #sentence
     for sentence in texts:
         # print(sentence)
-        phonetic.api_sentence_tts(sentence)
+        # phonetic.api_sentence_tts(sentence)
         syllables = phonetic.api_phrase_sentence_phonetic(sentence)
         phones = phonetic.api_phrase_sentence_phones_cmu(sentence)
         # print(phonetic.phonemizer_sentence(sentence, True, False))
