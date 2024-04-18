@@ -114,14 +114,14 @@ class Phonetic(object):
         print('tts use cuda: ', use_cuda)
         # self.tts_model = TTS(language='EN', device=device)
         
-        if not log_file or not os.path.exists(log_file):
-            self.log_dir = os.path.join(os.path.dirname(__file__), 'log')
-            if not os.path.exists(self.log_dir):
-                os.makedirs(self.log_dir)
+        # if not log_file or not os.path.exists(log_file):
+        #     self.log_dir = os.path.join(os.path.dirname(__file__), 'log')
+        #     if not os.path.exists(self.log_dir):
+        #         os.makedirs(self.log_dir)
             
-            log_file = os.path.join(self.log_dir, 'dict.log')
+        #     log_file = os.path.join(self.log_dir, 'dict.log')
         
-        logging.basicConfig(filename=log_file, level=logging.DEBUG, format='')
+        # logging.basicConfig(filename=log_file, level=logging.DEBUG, format='')
 
     def load_ecdict(self, reload = False) -> None:
         if self.dc.__len__() == 0 or reload:           
@@ -202,7 +202,7 @@ class Phonetic(object):
             if len(parts) > 1:
                 text_type = 'PHRASE'
             message = f"{text_type} '{text}' not found in dictionary."
-            warnings.warn(message)
+            # warnings.warn(message)
             logging.warning(message)
             return {}
         else:
@@ -310,6 +310,9 @@ class Phonetic(object):
         
         if style == 'us':
             phonetic = phonetic.replace('ɑ', 'a')
+            # phonetic = phonetic.replace('ɜː', 'ɜːr')
+            # phonetic = phonetic.replace('o', 'ɔ')
+            # phonetic = phonetic.replace('ɔʊ', 'oʊ')
         elif style == 'br':
             phonetic = phonetic.replace('a', 'æ')
             phonetic = phonetic.replace('æʊ', 'aʊ')
@@ -422,7 +425,7 @@ class Phonetic(object):
         if phonetics:
             if index >= len(phonetics):
                 message = f"Word {word} only found {len(phonetics)} in dictionary."
-                warnings.warn(message)
+                # warnings.warn(message)
                 logging.warning(message)
                 index = 0
         
@@ -436,8 +439,8 @@ class Phonetic(object):
         assert style in ['us', 'br']
         
         if to_phones and style == 'br':
-            warnings.warn("Britain phonemizer does not support to_phones option.")
-            logging.info("Britain phonemizer does not support to_phones option.")
+            # warnings.warn("Britain phonemizer does not support to_phones option.")
+            logging.warning("Britain phonemizer does not support to_phones option.")
             style = 'us'
         
         if style == 'us':
@@ -506,37 +509,63 @@ class Phonetic(object):
     def api_word_phones_cmu(self, word) -> str:
         # TODO: Won't be calling all 3 calls in the future, and there is test to all APIs to all words
         p1 = self.cmu_dict(word)
-        p2 = self.g2p(word)
-        p3 = self.phonemizer(word, 'us', True)
-
-        if p1 and p1 != p2:
-            warnings.warn(f"CMU Dict and G2P phonetic not match for word {word}.")
-            logging.warning(f"CMU Dict and G2P phonetic not match for word {word}.")
-            logging.info(p1)
-            logging.info(p2)
+        if p1:
+            parts1 = p1.split(' ')
+            parts1 = [p.rstrip(string.digits) if p not in ['ER0', 'AH0'] else p for p in parts1]
+        else:
+            parts1 = []
         
-        if p2 != p3:
-            warnings.warn(f"G2P and Phonemizer phonetic not match for word {word}.")
+        p2 = self.g2p(word)
+        if p2:
+            parts2 = p2.split(' ')
+            parts2 = [p.rstrip(string.digits) if p not in ['ER0', 'AH0'] else p for p in parts2]
+        else:
+            parts2 = []
+        
+        p3 = self.phonemizer(word, 'us', True)
+        if p3:
+            parts3 = p3.split(' ')
+            parts3 = [p.rstrip(string.digits) if p not in ['ER0', 'AH0'] else p for p in parts3]
+        else:
+            parts3 = []
+
+        if p1 and parts1 != parts2:
+            # warnings.warn(f"CMU Dict and G2P phonetic not match for word {word}.")
+            logging.warning(f"CMU Dict and G2P phonetic not match for word {word}.")
+            logging.warning(p1)
+            logging.warning(p2)
+        
+        if parts2 != parts3:
+            # warnings.warn(f"G2P and Phonemizer phonetic not match for word {word}.")
             logging.warning(f"G2P and Phonemizer phonetic not match for word {word}.")
-            logging.info(p2)
-            logging.info(p3)
+            logging.warning(p2)
+            logging.warning(p3)
         
         # TODO: return p2 or p3, return p3 after the dataset is updated according to phonemizer 
         return p3
 
     def api_phrase_sentence_phones_cmu(self, text) -> str:
         p2 = self.g2p_sentence(text)
-        parts = p2.split(' ')
-        parts = [p for p in parts if p.strip()]
-        p2 = ' '.join(parts)
+        if p2:
+            parts2 = p2.split(' ')
+            parts2 = [p for p in parts2 if p.strip()]
+            p2 = ' '.join(parts2)
+            parts2 = [p.rstrip(string.digits) if p not in ['ER0', 'AH0'] else p for p in parts2]
+        else:
+            parts2 = []
 
         p3 = self.phonemizer_phrase_sentence(text, 'us', True)
+        if p3:
+            parts3 = p3.split(' ')
+            parts3 = [p.rstrip(string.digits) if p not in ['ER0', 'AH0'] else p for p in parts3]
+        else:
+            parts3 = []
 
-        if p2 != p3:
-            warnings.warn(f"G2P and Phonemizer phonetic not match for text: {text}.")
+        if parts2 != parts3:
+            # warnings.warn(f"G2P and Phonemizer phonetic not match for text: {text}.")
             logging.warning(f"G2P and Phonemizer phonetic not match for text: {text}.")
-            logging.info(p2)
-            logging.info(p3)
+            logging.warning(p2)
+            logging.warning(p3)
         
         return p3
 
@@ -656,7 +685,9 @@ def main():
              'wishes', 'OPPO', 'suburban', 'outstanding', 'geology', 'dashing', 'longtimenosee', 'phoneme', 'thorough', 'Toronto']
     
     # words = ['cat', 'cats', 'CAT', 'chance', 'really']
-    words = ['today']
+    # TODO: ɜː	ɜːr is not in the difference list
+    # words = ['skirt', 'hurt', 'lurker', 'kirtland']
+    words = ['vegetable', 'diamond']
     start = time.time()
     print(start - t0)
     for word in words:

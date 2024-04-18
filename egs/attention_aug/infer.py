@@ -21,6 +21,7 @@ from termcolor import colored, cprint
 import librosa
 import warnings
 import json
+import logging
 
 sys.path.append('./')
 from models.model_ctc import *
@@ -283,12 +284,9 @@ def post_revise_to_rule(cannoicals, decodes, dc, rules):
 
         i += 1
     
-    if altered:
-        warnings.warn("Some phonemes are revised according to the rules")
-
     assert len(cannoicals) == len(decodes) == len(dc)
 
-    return cannoicals, decodes, dc
+    return cannoicals, decodes, dc, altered
 
 def post_del_repeat(decodes):
     parts = decodes.split(' ')
@@ -488,18 +486,31 @@ def infer(phonetic, word_dict, test_loader, device, model, decoder, vocab, test_
                 decoded_nosil[x] = decoded_nosil[x].replace('  ', ' ')
                 # TODO:
                 decoded_nosil[x] = post_del_repeat(decoded_nosil[x])
-
-                _, dc_path = decoder.wer(decoded_nosil[x], canonicals_nosil[x])
-
-                phones_decoded = [c for c in decoded_nosil[x].split(' ') if c]
-                phones_canonicals = [c for c in canonicals_nosil[x].split(' ') if c]
                 
-                if use_ipa:
-                    phones_decoded = [phonetic.cmu_to_ipa_wiki.get(c.upper(), c) for c in phones_decoded]
-                    phones_canonicals = [phonetic.cmu_to_ipa_wiki.get(c.upper(), c) for c in phones_canonicals]
+                if not decoded_nosil[x]:
+                    # warnings.warn("Empty decoded sequence, SKIP FOR: " + utterance)
+                    logging.info("Empty decoded sequence, SKIP FOR: " + utterance)
+                    phones_canonicals = [c for c in canonicals_nosil[x].split(' ') if c]
+                    if use_ipa:
+                        phones_canonicals = [phonetic.cmu_to_ipa_wiki.get(c.upper(), c) for c in phones_canonicals]
+                    phones_decoded = ['D'] * len(phones_canonicals)
+                    dc_path = ['D'] * len(phones_canonicals)
+                else:
+                    _, dc_path = decoder.wer(decoded_nosil[x], canonicals_nosil[x])
 
-                phones_decoded, phones_canonicals, dc_path = align_canonical_decoded(phones_decoded, phones_canonicals, dc_path)
-                phones_canonicals, phones_decoded, dc_path = post_revise_to_rule(phones_canonicals, phones_decoded, dc_path, ipa_mapping)
+                    phones_decoded = [c for c in decoded_nosil[x].split(' ') if c]
+                    phones_canonicals = [c for c in canonicals_nosil[x].split(' ') if c]
+                
+                    if use_ipa:
+                        phones_decoded = [phonetic.cmu_to_ipa_wiki.get(c.upper(), c) for c in phones_decoded]
+                        phones_canonicals = [phonetic.cmu_to_ipa_wiki.get(c.upper(), c) for c in phones_canonicals]
+
+                    phones_decoded, phones_canonicals, dc_path = align_canonical_decoded(phones_decoded, phones_canonicals, dc_path)
+                    phones_canonicals, phones_decoded, dc_path, altered = post_revise_to_rule(phones_canonicals, phones_decoded, dc_path, ipa_mapping)
+                    if altered:
+                        # warnings.warn("Some phonemes are revised according to the rules, for this utterance: " + utterance)
+                        logging.warning("Some phonemes are revised according to the rules. FOR UTTERANCE: " + utterance)
+                        
 
                 tmp1, tmp2, tmp3 = print_aligned_string(phones_decoded, phones_canonicals, dc_path) 
                 
@@ -549,19 +560,6 @@ def infer(phonetic, word_dict, test_loader, device, model, decoder, vocab, test_
                         'score' : str(score)
                     }
                     json.dump(result, w2, indent=2, ensure_ascii=False)
-                    # print("id     : " + utt_list[x], file=w2)
-                    # print(utt_list[x] + ": " + utterance, file=w2)
-                    # print(annotation, file=w2)
-                    # print(translation, file=w2)
-                    # print(tmp2, file=w2) 
-                    # print(tmp3, file=w2)
-                    # print(tmp1, file=w2)
-                    # print("ins err: " + , file=w2)
-                    # print("sub err: " + " ".join(substution_fault), file=w2)
-                    # print("del err: " + " ".join(deletion_fault), file=w2)
-                    # print('Comp.  : ' + str(correct_cnt) + '/'+ str(correct_cnt + del_sub_cnt), file=w2)
-                    # print('score  : ' + str(score), file=w2)
-                    # print("", file=w2)
                 
                 total_correct_cnt += correct_cnt
                 total_cnt += correct_cnt + del_sub_cnt
@@ -651,9 +649,14 @@ def main():
         for f in files:
             os.remove(f)
     
-    dict_log  = output_dir + "/dict.log"
-    with open(dict_log, 'w+') as f:
+    # dict_log  = output_dir + "/dict.log"
+    # with open(dict_log, 'w+') as f:
+    #     pass
+    
+    rule_log = output_dir + "/rule.log"
+    with open(rule_log, 'w+') as f:
         pass
+    logging.basicConfig(filename=rule_log, level=logging.DEBUG, format='')
 
     use_ipa = args.phonetic_format == 'ipa'
     phoneme_frd = args.phonetic
@@ -668,7 +671,7 @@ def main():
     else:
         args.textgrid_path = None # bypass
 
-    print(args.wav_transcript_path, use_ipa, phoneme_frd, dict_log, output_dir)
+    print(args.wav_transcript_path, use_ipa, phoneme_frd, rule_log, output_dir)
 
     total_wav_time = 0
     cnt = 0
@@ -676,12 +679,12 @@ def main():
     if system == 'Darwin':
         try:
             os.environ['PHONEMIZER_ESPEAK_LIBRARY'] = '/opt/homebrew/Cellar/espeak/1.48.04_1/lib/libespeak.dylib'
-            phonetic = Phonetic(dict_log)
+            phonetic = Phonetic()
         except:
             os.environ['PHONEMIZER_ESPEAK_LIBRARY'] = '/usr/local/Cellar/espeak/1.48.04_1/lib/libespeak.dylib'
-            phonetic = Phonetic(dict_log)
+            phonetic = Phonetic()
     else:
-        phonetic = Phonetic(dict_log)
+        phonetic = Phonetic()
 
     can_transcript_words_dict = dict()
 
