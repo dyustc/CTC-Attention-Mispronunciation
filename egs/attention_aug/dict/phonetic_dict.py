@@ -69,6 +69,7 @@ class Phonetic(object):
 
         for k, v in self.cmu_to_ipa_wiki.items():
             self.ipa_to_cmu_wiki[v] = k
+        self.ipa_to_cmu_wiki['ɜr'] = 'ER'
 
         self.cmu_vowel_phones = [
             'AA', 'AE', 'AH', 'AO', 'AW', 'AY', 'EH', 
@@ -96,6 +97,13 @@ class Phonetic(object):
         self.cmudict_plain = {}
         self.letter_ipa_dict = {}
         self.dc = {}
+
+        # whitelist
+        self.whitelist = set([
+            'salesperson',
+            'vegetable',
+            'explore'
+        ])
 
         self.g2p_backend = G2p()
         self.backend_us = EspeakBackend('en-us', with_stress = True)
@@ -129,6 +137,7 @@ class Phonetic(object):
             self.dc = DictCsv(csvname)
         
         self.dc.update('cat', {'translation' : 'n. 猫，猫科动物'})
+        self.dc.update('alien', {'translation' : 'n. 外国人，侨民；外星人\nadj. 外星的，异域的，相异的\n'})
         self.dc.register('take chance', {'translation' : '冒险，抓住机会'})
         
         return
@@ -310,9 +319,9 @@ class Phonetic(object):
         
         if style == 'us':
             phonetic = phonetic.replace('ɑ', 'a')
-            # phonetic = phonetic.replace('ɜː', 'ɜːr')
-            # phonetic = phonetic.replace('o', 'ɔ')
-            # phonetic = phonetic.replace('ɔʊ', 'oʊ')
+            phonetic = phonetic.replace('ɜː', 'ɜːr')
+            phonetic = phonetic.replace('o', 'ɔ')
+            phonetic = phonetic.replace('ɔʊ', 'oʊ')
         elif style == 'br':
             phonetic = phonetic.replace('a', 'æ')
             phonetic = phonetic.replace('æʊ', 'aʊ')
@@ -542,7 +551,10 @@ class Phonetic(object):
             logging.warning(p3)
         
         # TODO: return p2 or p3, return p3 after the dataset is updated according to phonemizer 
-        return p3
+        if word in self.whitelist:
+            return p2
+        else:
+            return p3
 
     def api_phrase_sentence_phones_cmu(self, text) -> str:
         p2 = self.g2p_sentence(text)
@@ -687,7 +699,11 @@ def main():
     # words = ['cat', 'cats', 'CAT', 'chance', 'really']
     # TODO: ɜː	ɜːr is not in the difference list
     # words = ['skirt', 'hurt', 'lurker', 'kirtland']
-    words = ['vegetable', 'diamond']
+    words = ['accept', 'address', 'accident', 'salesperson', 'vegetable', 'diamond', 'explore', 'bargain', 'across']
+    # salesperson
+    # vegetable
+    # explore
+    
     start = time.time()
     print(start - t0)
     for word in words:
