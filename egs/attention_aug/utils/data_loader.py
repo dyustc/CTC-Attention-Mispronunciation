@@ -109,9 +109,23 @@ class SpeechDataset(Dataset):
                 utt, trans = line.strip().split(' ', 1)
                 trans_dict[utt] = [self.vocab.word2index[c] if c in self.vocab.word2index else self.vocab.word2index['UNK'] for c in trans.split()]
                 line = rf.readline() 
+        # print(self.lab_path, self.trans_path, self.scp_path)
+        # print(path_dict, len(path_dict))
+        # print(label_dict, len(label_dict))
+        # print(trans_dict, len(trans_dict))
         
-        assert len(path_dict) == len(label_dict)
-        assert len(path_dict) == len(trans_dict)
+        wav_list = set([p[0] for p in path_dict])
+        label_list = set(label_dict.keys())
+        trans_list = set(trans_dict.keys())
+
+        intersection = set.intersection(wav_list, label_list, trans_list)
+        
+        path_dict = [(utt, path) for utt, path in path_dict if utt in intersection]
+        label_dict = {utt: label_dict[utt] for utt in intersection}
+        trans_dict = {utt: trans_dict[utt] for utt in intersection}
+
+        # assert len(path_dict) == len(label_dict)
+        # assert len(path_dict) == len(trans_dict)
         print("Reading %d lines from %s" % (len(label_dict), self.lab_path))
         
         self.item = []
