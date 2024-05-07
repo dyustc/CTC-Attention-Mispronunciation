@@ -10,7 +10,7 @@ import warnings
 import logging
 import platform
 import time
-# from melo.api import TTS
+from melo.api import TTS
 import torch
 
 ECDICT_PATH = os.path.abspath('/'.join([os.path.dirname(__file__), '..', '..', '..', 'ECDICT']))
@@ -120,7 +120,9 @@ class Phonetic(object):
         # use_cuda = False
         device = 'cuda:0' if use_cuda else 'cpu'
         print('tts use cuda: ', use_cuda)
-        # self.tts_model = TTS(language='EN', device=device)
+        self.tts_model = TTS(language='EN', device=device)
+
+        self.translation_model = 'volca'
         
         # if not log_file or not os.path.exists(log_file):
         #     self.log_dir = os.path.join(os.path.dirname(__file__), 'log')
@@ -222,29 +224,43 @@ class Phonetic(object):
         texts = result.get('translation', '')
         if not texts:
             return ''
-       
         text = texts.split('\n')
         
         first_classes = [
-            'n.', 'v.', 'vt.', 'vi.', 'a.', 'adj.', 
-            'adv.', 'prep.', 'conj.', 'pron.',  'num.'
+            'n.', 'v.', 'vt.', 'vi.', 'a.', 'adj.', 'pron.',
+            'adv.',  'num.',  'art.', 'prep.', 'conj.', 'int.'
         ]
-        
-        second_classes = [
-            'art.', 'int.', 'abbr.', 'aux.', 'modal.', 
-            'phr.', 'idiom.'
-        ]
-        
-        classes = first_classes + second_classes
+
         filtered_texts = []
+        is_verb_in = False
+        verb_translations = []
         for t in text:
             c = t.split(' ')[0]
             if c in first_classes:
-                if c == 'a.':
-                    filtered_texts.append('adj.' + t[2:])
+                if c == 'adj.':
+                    filtered_texts.append('a.' + t[4:])
+                elif c == 'adv.':
+                    filtered_texts.append('ad.' + t[4:])
+                elif c == 'v.':
+                    if is_verb_in:
+                        verb_translations.append(t[2:])
+                    else:
+                        filtered_texts.append('v.' + t[2:])
+                        is_verb_in = True
+                elif c == 'vt.' or c == 'vi.':
+                    if is_verb_in:
+                        verb_translations.append(t[3:])
+                    else:
+                        filtered_texts.append('v.' + t[3:])
+                        is_verb_in = True
                 else:
                     filtered_texts.append(t)
+            if len(filtered_texts) >= 2:
+                break
+            
         
+        # print(filtered_texts)
+  
         if not filtered_texts:
             extra_info = result.get('exchange', None)
             if extra_info:
@@ -259,9 +275,23 @@ class Phonetic(object):
                 else:
                     return self.dc_dict_word_translation(parent)
         
-        if filtered_texts:
-            texts = '\n'.join(filtered_texts)
-        
+        simplified_texts = []
+        for item in filtered_texts:
+            item = item.replace('，', ',')
+            item = item.replace(';', ',')
+            item = item.replace('；', ',')
+
+            parts = item.split(',')
+            if len(parts) >= 2:
+                simplified_texts.append(','.join(parts[:2]))
+            else:
+                if item.startswith('v.'):
+                    if verb_translations:
+                        item += ', ' + verb_translations[0]
+
+                simplified_texts.append(item)
+
+        texts = '\n'.join(simplified_texts)
         texts = texts.strip()
 
         return texts
@@ -302,6 +332,12 @@ class Phonetic(object):
                     pass
                 elif index-2 >= 0 and phonetic[index-2:index] == 'st':
                     phonetic = phonetic[:index-2] + 'ˈ'  + 'st' + phonetic[index+1:]
+                elif index-2 >= 0 and phonetic[index-2:index] == 'kw':
+                    phonetic = phonetic[:index-2] + 'ˈ'  + 'kw' + phonetic[index+1:]
+                elif index-2 >= 0 and phonetic[index-2:index] == 'dr':
+                    phonetic = phonetic[:index-2] + 'ˈ'  + 'dr' + phonetic[index+1:]
+                elif index-2 >= 0 and phonetic[index-2:index] == 'tr':
+                    phonetic = phonetic[:index-2] + 'ˈ'  + 'tr' + phonetic[index+1:]
                 else:
                     phonetic = phonetic[:index-1] + 'ˈ'  + phonetic[index-1] + phonetic[index+1:]
         
@@ -693,13 +729,14 @@ def main():
         "He isn't reasonable enough to suspect anyone of such a crime.",
     ]
 
-    words = ['vocabulary', 'gather', 'about', 'through', 'rough', 'content', 'magazine', 'accept', 'talked', 'bananas',
-             'wishes', 'OPPO', 'suburban', 'outstanding', 'geology', 'dashing', 'longtimenosee', 'phoneme', 'thorough', 'Toronto']
+    # words = ['vocabulary', 'Gather', 'about', 'through', 'rough', 'content', 'magazine', 'accept', 'talked', 'bananas',
+    #          'wishes', 'OPPO', 'suburban', 'outstanding', 'geology', 'dashing', 'longtimenosee', 'phoneme', 'thorough', 'Toronto']
     
     # words = ['cat', 'cats', 'CAT', 'chance', 'really']
     # TODO: ɜː	ɜːr is not in the difference list
     # words = ['skirt', 'hurt', 'lurker', 'kirtland']
-    words = ['accept', 'address', 'accident', 'salesperson', 'vegetable', 'diamond', 'explore', 'bargain', 'across']
+    # words = ['accept', 'address', 'accident', 'salesperson', 'vegetable', 'diamond', 'explore', 'bargain', 'across']
+    # words = ['computer']
     # salesperson
     # vegetable
     # explore
@@ -742,23 +779,23 @@ def main():
         # s2 = phonetic.phonemizer_phrase_sentence(phrase, 'br')
         syllables = phonetic.api_phrase_sentence_phonetic(phrase)
         phones = phonetic.api_phrase_sentence_phones_cmu(phrase)
-        text = phonetic.api_phrase_translation(phrase)
+        # text = phonetic.api_phrase_translation(phrase)
         # phonetic.api_word_phrase_tts(phrase)
         # print(phrase, s1, s2)
         print(phrase, syllables)
         print(phones)
-        print(text)
+        # print(text)
         print()
-    # exit()
+    exit()
     #sentence
     for sentence in texts:
         # print(sentence)
-        # phonetic.api_sentence_tts(sentence)
+        phonetic.api_sentence_tts(sentence, speed=1.5)
         syllables = phonetic.api_phrase_sentence_phonetic(sentence)
         phones = phonetic.api_phrase_sentence_phones_cmu(sentence)
         # print(phonetic.phonemizer_sentence(sentence, True, False))
         # print(phonetic.g2p(sentence, False))
-        print(text)
+        print(sentence)
         print(syllables)
         print(phones)
         print("")
