@@ -280,6 +280,8 @@ class Phonetic(object):
             item = item.replace('，', ',')
             item = item.replace(';', ',')
             item = item.replace('；', ',')
+            item = item.replace('（', '(')
+            item = item.replace('）', ')')
 
             parts = item.split(',')
             if len(parts) >= 2:
@@ -298,7 +300,32 @@ class Phonetic(object):
     
     def dc_dict_phrase_translation(self, phrase) -> str:
         result = self.dc_dict(phrase)
-        return result.get('translation', '')
+        texts = result.get('translation', '')
+        if not texts:
+            return ''
+        
+        text = texts.split('\n')
+        simplified_texts = []
+        for item in text:
+            item = item.replace('，', ',')
+            item = item.replace(';', ',')
+            item = item.replace('；', ',')
+            item = item.replace('（', '(')
+            item = item.replace('）', ')')
+            
+            parts = item.split(',')
+            parts = [p.strip() for p in parts]
+            parts = [p for p in parts if not p.startswith('[') and not p.startswith('〈') and not p.startswith('<')]
+
+            for p in parts:
+                if p not in simplified_texts:
+                    simplified_texts.append(p)
+                if len(simplified_texts) >= 3:
+                    break
+        
+        texts = ', '.join(simplified_texts)
+
+        return texts
     
     def dc_dict_phonetic(self, word) -> str:
         result = self.dc_dict(word)
@@ -356,6 +383,7 @@ class Phonetic(object):
         if style == 'us':
             phonetic = phonetic.replace('ɑ', 'a')
             phonetic = phonetic.replace('ɜː', 'ɜːr')
+            phonetic = phonetic.replace('ɜːrr', 'ɜːr')
             phonetic = phonetic.replace('o', 'ɔ')
             phonetic = phonetic.replace('ɔʊ', 'oʊ')
         elif style == 'br':
@@ -717,7 +745,7 @@ def main():
                'take chance', 'shake it off', 'shake off', 'be able to', 'go forward',
                'tell about', 'let it go', 'work out', 'wake up', 'whats up',
                'take care', 'at school', 'in time', 'on the clock', 'for that']
-    phrases = ['the odds', 'pass for', '7 am']
+    # phrases = ['work out']
     texts = [
         "I refuse to collect the refuse around here.", # homograph
         "I'm an activationist.",
@@ -729,14 +757,14 @@ def main():
         "He isn't reasonable enough to suspect anyone of such a crime.",
     ]
 
-    # words = ['vocabulary', 'Gather', 'about', 'through', 'rough', 'content', 'magazine', 'accept', 'talked', 'bananas',
-    #          'wishes', 'OPPO', 'suburban', 'outstanding', 'geology', 'dashing', 'longtimenosee', 'phoneme', 'thorough', 'Toronto']
+    words = ['vocabulary', 'Gather', 'about', 'through', 'rough', 'content', 'magazine', 'accept', 'talked', 'bananas',
+             'wishes', 'OPPO', 'suburban', 'outstanding', 'geology', 'dashing', 'longtimenosee', 'phoneme', 'thorough', 'Toronto']
     
     # words = ['cat', 'cats', 'CAT', 'chance', 'really']
     # TODO: ɜː	ɜːr is not in the difference list
     # words = ['skirt', 'hurt', 'lurker', 'kirtland']
     # words = ['accept', 'address', 'accident', 'salesperson', 'vegetable', 'diamond', 'explore', 'bargain', 'across']
-    # words = ['computer']
+    words = ['work']
     # salesperson
     # vegetable
     # explore
@@ -773,18 +801,18 @@ def main():
         # print(s2_1)
         # print(s3_1)
         # print(word, s1, s2, s3, s4, s1 == s2)
-    exit()
+    # exit()
     for phrase in phrases:
         # s1 = phonetic.phonemizer_phrase_sentence(phrase, 'us')
         # s2 = phonetic.phonemizer_phrase_sentence(phrase, 'br')
         syllables = phonetic.api_phrase_sentence_phonetic(phrase)
         phones = phonetic.api_phrase_sentence_phones_cmu(phrase)
-        # text = phonetic.api_phrase_translation(phrase)
+        text = phonetic.api_phrase_translation(phrase)
         # phonetic.api_word_phrase_tts(phrase)
         # print(phrase, s1, s2)
         print(phrase, syllables)
         print(phones)
-        # print(text)
+        print(text)
         print()
     exit()
     #sentence
