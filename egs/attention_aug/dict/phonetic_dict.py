@@ -565,6 +565,45 @@ class Phonetic(object):
 
     def g2p_sentence(self, text, to_ipa = False) -> str:        
         return self.g2p(text, to_ipa)
+    
+    def _volca_translation(self, text, target_language = 'zh') -> str:
+        import json
+        from volcengine.ApiInfo import ApiInfo
+        from volcengine.Credentials import Credentials
+        from volcengine.ServiceInfo import ServiceInfo
+        from volcengine.base.Service import Service
+
+        k_access_key = '' # https://console.volcengine.com/iam/keymanage/
+        k_secret_key = ''
+        k_service_info = \
+            ServiceInfo('translate.volcengineapi.com',
+            {'Content-Type': 'application/json'},
+            Credentials(k_access_key, k_secret_key, 'translate', 'cn-north-1'),
+            5,
+            5)
+        k_query = {
+            'Action': 'TranslateText',
+            'Version': '2020-06-01'
+        }
+        k_api_info = {
+            'translate': ApiInfo('POST', '/', k_query, {}, {})
+        }
+        
+        service = Service(k_service_info, k_api_info)
+        body = {
+            'TargetLanguage': 'zh',
+            'TextList': [text]
+        }
+        res = service.json('translate', {}, json.dumps(body))
+        d = json.loads(res)
+        ret = d.get('TranslationList', [None])[0]
+        if ret:
+            ret = ret.get('Translation', '')
+
+        return ret
+
+    def _youdao_translation(self, text, target_language = 'zh') -> str:
+        pass
 
     def api_word_phonetic(self, word) -> str:
         phonetic_us = self.phonemizer(word, 'us')
@@ -697,19 +736,21 @@ class Phonetic(object):
         translation = self.dc_dict_word_translation(word)
         if not translation:
             # use translation model
-            pass
+            return self._volca_translation(word)
+    
         return translation
     
     def api_phrase_translation(self, phrase) -> str:
         translation = self.dc_dict_phrase_translation(phrase)
         if not translation:
             # use translation model
-            pass
+            return self._volca_translation(phrase)
+
         return translation
     
     def api_sentence_translation(self, sentence) -> str:
         # use translation model
-        return 
+        return self._volca_translation(sentence)
  
 def main():
     t0 = time.time()
@@ -764,68 +805,46 @@ def main():
     # TODO: ɜː	ɜːr is not in the difference list
     # words = ['skirt', 'hurt', 'lurker', 'kirtland']
     # words = ['accept', 'address', 'accident', 'salesperson', 'vegetable', 'diamond', 'explore', 'bargain', 'across']
-    words = ['work']
+    # words = ['work']
     # salesperson
     # vegetable
     # explore
     
     start = time.time()
     print(start - t0)
-    for word in words:
-        
-        # s1 = phonetic.dc_dict_phonetic(word)
-        # s2 = phonetic.ipa_dict(word)
-        # s4_1 = phonetic.phonemizer(word, 'us')
-        # s4_2 = phonetic.phonemizer(word, 'br')
-        # s3 = phonetic.cmu_dict(word)x
-        # s5 = phonetic.g2p(word)
-        
+    for word in words:        
         syllables = phonetic.api_word_phonetic(word)
-        phones = phonetic.api_word_phones_cmu(word)
+        # phones = phonetic.api_word_phones_cmu(word)
         text = phonetic.api_word_translation(word)
-        # phonetic.api_word_phrase_tts(word, accent='Default', speed=0.7)
+        phonetic.api_word_phrase_tts(word)
         
-        # print(word, s1, s2, s3, s4_2, s4_1, s5)
-        # print(word, s4_2, s4_1)
         print(word, syllables)
-        print(phones)
-        # print(s3)
-        # print(s5)
-        # print(s4)
+        # print(phones)
         print(text)
         print()
-        # print(s2_1)
-        # print(s3_1)
-        # print(word, s2, s3, s1, s4)
-        # print(s1_1)
-        # print(s2_1)
-        # print(s3_1)
-        # print(word, s1, s2, s3, s4, s1 == s2)
     # exit()
     for phrase in phrases:
-        # s1 = phonetic.phonemizer_phrase_sentence(phrase, 'us')
-        # s2 = phonetic.phonemizer_phrase_sentence(phrase, 'br')
         syllables = phonetic.api_phrase_sentence_phonetic(phrase)
-        phones = phonetic.api_phrase_sentence_phones_cmu(phrase)
+        # phones = phonetic.api_phrase_sentence_phones_cmu(phrase)
         text = phonetic.api_phrase_translation(phrase)
-        # phonetic.api_word_phrase_tts(phrase)
-        # print(phrase, s1, s2)
+        phonetic.api_word_phrase_tts(phrase)
         print(phrase, syllables)
-        print(phones)
+        # print(phones)
         print(text)
         print()
-    exit()
+    # exit()
     #sentence
     for sentence in texts:
-        # print(sentence)
-        phonetic.api_sentence_tts(sentence, speed=1.5)
-        syllables = phonetic.api_phrase_sentence_phonetic(sentence)
-        phones = phonetic.api_phrase_sentence_phones_cmu(sentence)
+        # syllables = phonetic.api_phrase_sentence_phonetic(sentence)
+        # phones = phonetic.api_phrase_sentence_phones_cmu(sentence)
+        text = phonetic.api_sentence_translation(sentence)
+        phonetic.api_sentence_tts(sentence)
         # print(phonetic.phonemizer_sentence(sentence, True, False))
         # print(phonetic.g2p(sentence, False))
         print(sentence)
-        print(syllables)
-        print(phones)
+        # print(syllables)
+        # print(phones)
+        print(text)
         print("")
         # print(phonetic.g2p(sentence, False))
     # exit()
