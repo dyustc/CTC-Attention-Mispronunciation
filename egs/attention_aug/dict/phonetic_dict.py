@@ -751,7 +751,54 @@ class Phonetic(object):
     def api_sentence_translation(self, sentence) -> str:
         # use translation model
         return self._volca_translation(sentence)
- 
+
+    def api_all_in_one(self, text, is_word = False) -> dict:
+        is_phrase = False
+        is_sentence = False
+        
+        # TODO: check if text is word
+        text = text.strip()
+        is_word = is_word or ' ' not in text
+
+        if is_word:
+            syllables = self.api_word_phonetic(text)
+            translation = self.api_word_translation(text)
+            wavfile = self.api_word_phrase_tts(text)
+        else:
+            space_cnt = 0
+            for c in text:
+                if c == ' ':
+                    space_cnt += 1
+                    if space_cnt >= 4:
+                        is_sentence = True
+                        break
+                elif c in string.punctuation:
+                    is_sentence = True
+                    break
+
+            is_phrase = not is_sentence
+            
+            if is_phrase:
+                syllables = self.api_phrase_sentence_phonetic(text)
+                translation = self.api_phrase_translation(text)
+                wavfile = self.api_word_phrase_tts(text)
+            else:
+                syllables = None
+                translation = self.api_sentence_translation(text)
+                wavfile = self.api_sentence_tts(text)
+        
+        result = {
+                'text' : text,
+                'is_word' : is_word,
+                'is_phrase' : is_phrase,
+                'is_sentence' : is_sentence,
+                'translation' : translation,
+                'syllables' : syllables,
+                'wavfile' : wavfile
+            }
+
+        return result
+
 def main():
     t0 = time.time()
     system = platform.system()
@@ -809,6 +856,13 @@ def main():
     # salesperson
     # vegetable
     # explore
+
+    mixed = words + phrases + texts
+    for item in mixed:
+        print(phonetic.api_all_in_one(item))
+        print()
+    exit()
+
     
     start = time.time()
     print(start - t0)
