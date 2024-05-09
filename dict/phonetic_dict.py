@@ -13,12 +13,12 @@ import time
 from melo.api import TTS
 import torch
 
-ECDICT_PATH = os.path.abspath('/'.join([os.path.dirname(__file__), '..', '..', '..', 'ECDICT']))
+ECDICT_PATH = os.path.abspath('/'.join([os.path.dirname(__file__), '..', 'ECDICT']))
 sys.path.append(ECDICT_PATH)
 from stardict import DictCsv
 
 class Phonetic(object):
-    def __init__(self, log_file = None) -> None:
+    def __init__(self, log_file = None, translation_engine = 'volca') -> None:
         # This ipa mapping is done as the us syllable way.
         self.cmu_to_ipa_wiki = {
             "AA" : 'a',
@@ -122,7 +122,13 @@ class Phonetic(object):
         print('tts use cuda: ', use_cuda)
         self.tts_model = TTS(language='EN', device=device)
 
-        self.translation_model = 'volca'
+        self.translation_engine = translation_engine
+        if self.translation_engine == 'volca':
+            self._translator = self._volca_translator
+        elif self.translation_engine == 'youdao':
+            self._translator = self._youdao_translator
+        else:
+            raise ValueError("Translation engine '{}' NOT supported.".format(self.translation_engine))
         
         # if not log_file or not os.path.exists(log_file):
         #     self.log_dir = os.path.join(os.path.dirname(__file__), 'log')
@@ -566,7 +572,7 @@ class Phonetic(object):
     def g2p_sentence(self, text, to_ipa = False) -> str:        
         return self.g2p(text, to_ipa)
     
-    def _volca_translation(self, text, target_language = 'zh') -> str:
+    def _volca_translator(self, text, target_language = 'zh') -> str:
         import json
         from volcengine.ApiInfo import ApiInfo
         from volcengine.Credentials import Credentials
@@ -602,7 +608,7 @@ class Phonetic(object):
 
         return ret
 
-    def _youdao_translation(self, text, target_language = 'zh') -> str:
+    def _youdao_translator(self, text, target_language = 'zh') -> str:
         pass
 
     def api_word_phonetic(self, word) -> str:
@@ -735,22 +741,34 @@ class Phonetic(object):
     def api_word_translation(self, word) -> str:
         translation = self.dc_dict_word_translation(word)
         if not translation:
-            # use translation model
-            return self._volca_translation(word)
+            _translator = self._translator
+            ret = _translator(word)
+            if ret == word:
+                return ret, 'failed'
+            else:
+                return ret, self.translation_engine
     
-        return translation
+        return translation, 'built-in'
     
     def api_phrase_translation(self, phrase) -> str:
         translation = self.dc_dict_phrase_translation(phrase)
         if not translation:
-            # use translation model
-            return self._volca_translation(phrase)
+            _translator = self._translator
+            ret = _translator(phrase)
+            if ret == phrase:
+                return ret, 'failed'
+            else:
+                return ret, self.translation_engine
 
-        return translation
+        return translation, 'built-in'
     
     def api_sentence_translation(self, sentence) -> str:
-        # use translation model
-        return self._volca_translation(sentence)
+        _translator = self._translator
+        ret = _translator(sentence)
+        if ret == sentence:
+            return ret, 'failed'
+        else:
+            return ret, self.translation_engine
 
     def api_all_in_one(self, text, is_word = False) -> dict:
         is_phrase = False
@@ -762,7 +780,7 @@ class Phonetic(object):
 
         if is_word:
             syllables = self.api_word_phonetic(text)
-            translation = self.api_word_translation(text)
+            translation, translation_src = self.api_word_translation(text)
             wavfile = self.api_word_phrase_tts(text)
         else:
             space_cnt = 0
@@ -780,11 +798,11 @@ class Phonetic(object):
             
             if is_phrase:
                 syllables = self.api_phrase_sentence_phonetic(text)
-                translation = self.api_phrase_translation(text)
+                translation, translation_src = self.api_phrase_translation(text)
                 wavfile = self.api_word_phrase_tts(text)
             else:
                 syllables = None
-                translation = self.api_sentence_translation(text)
+                translation, translation_src = self.api_sentence_translation(text)
                 wavfile = self.api_sentence_tts(text)
         
         result = {
@@ -793,6 +811,7 @@ class Phonetic(object):
                 'is_phrase' : is_phrase,
                 'is_sentence' : is_sentence,
                 'translation' : translation,
+                'translation_src' : translation_src,
                 'syllables' : syllables,
                 'wavfile' : wavfile
             }
@@ -856,8 +875,9 @@ def main():
     # salesperson
     # vegetable
     # explore
+    
+    # mixed = ["vocabularies", "vocabulary", 'vocabularys', 'sjewoe', 'he hit him really hard, but jenjdenen', 'shake it off', 'can go abroad', 'make amednde']
     mixed = words + phrases + texts
-    # mixed = ["vocabularies", "John's"]
     word_cnt = 0
     character_cnt = 0
     for item in mixed:
