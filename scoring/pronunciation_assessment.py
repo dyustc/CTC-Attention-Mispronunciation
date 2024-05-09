@@ -6,9 +6,10 @@ import json
 class PronunciationAssessment:
     def __init__(self):
         # Initialize any necessary variables or resources
+        self.gop_dir = os.path.normpath(os.path.dirname(__file__))
         self.gop_path = './rt_gop'
     
-    def assess_text(self, text = None, wav_file = None):
+    def assess_text(self, text, wav_file, to_json = False, json_file = None):
         # Assess the pronunciation of a single word
         # Implement your logic here
         input_text = text.replace("\"", "'")
@@ -27,14 +28,14 @@ class PronunciationAssessment:
 
         try:
             # TODO: Bugfix catch 
-            ret = subprocess.check_output(cmd, shell=True, stderr=subprocess.STDOUT)
+            ret = subprocess.check_output(cmd, shell=True, stderr=subprocess.STDOUT, cwd = self.gop_dir)
         except subprocess.CalledProcessError as e:
             err_msg = e.output
             ret = b''
 
         endpoint_dict = dict()
         final_dict = dict()
-        
+        # TODO: warning search
         parts = ret.split(b'[SEP]\n')
         for part in parts:
             dict_str = part
@@ -58,35 +59,19 @@ class PronunciationAssessment:
         ret_dict['total_accuracy'] = final_dict.get('sentence_accuracy', None)
         ret_dict['total_fluency'] = final_dict.get('sentence_fluency', None)
         ret_dict['total_integrity'] = final_dict.get('sentence_integrity', None)
+
+        if ret_dict['total_accuracy'] and ret_dict['total_fluency'] and ret_dict['total_integrity']:
+            ret_dict['total_score'] = 0.7 * ret_dict['total_accuracy'] + 0.3 * ret_dict['total_fluency']
+        else:
+            ret_dict['total_score'] = None
           
         ret_dict['ref_content'] = input_text
         ret_dict['raw_content'] = text
         ret_dict['wav_file'] = wav_file
         ret_dict['err_msg'] = err_msg
 
+        if to_json and json_file:
+            with open(json_file, 'a') as f:
+                json.dump(ret_dict, f, indent=2, ensure_ascii=False)
+
         return ret_dict
-
-# Usage example
-assessment = PronunciationAssessment()
-
-word = "vocabulary's"
-wav_file = '/Users/daiyi/work/ramp/pronunciation/mispronunciation_diagnosis/egs/vocabulary/default_0.7/1.wav'
-word_result = assessment.assess_text(word, wav_file)
-# print(word_result)
-# print(word_result.keys())
-
-
-phrase = "\"about time"
-wav_file = '/Users/daiyi/work/ramp/pronunciation/mispronunciation_diagnosis/egs/phrase/default_0.7/about_time.wav'
-phrase_result = assessment.assess_text(phrase, wav_file)
-print(phrase_result)
-# print(phrase_result.keys())
-
-sentence = "magnets can't be found on a can opener."
-wav_file = "/Users/daiyi/work/ramp/CTC-Attention-Mispronunciation/egs/sentence/single/男1a.wav"
-sentence_result = assessment.assess_text(sentence, wav_file)
-# print(sentence_result)
-# print(sentence_result.keys())
-
-# TODO: Bugfix
-# John'ss vocabulary's

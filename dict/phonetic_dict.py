@@ -1,24 +1,27 @@
-from g2p_en import G2p
+
 import string
-from phonemizer import phonemize
-from phonemizer.backend import EspeakBackend
 from typing import List
 import sys
-import csv
 import os
-import warnings
 import logging
 import platform
 import time
-from melo.api import TTS
+import yaml
+import json
+import csv
+
 import torch
+from phonemizer import phonemize
+from phonemizer.backend import EspeakBackend
+from g2p_en import G2p
+from melo.api import TTS
 
 ECDICT_PATH = os.path.abspath('/'.join([os.path.dirname(__file__), '..', 'ECDICT']))
 sys.path.append(ECDICT_PATH)
 from stardict import DictCsv
 
 class Phonetic(object):
-    def __init__(self, log_file = None, translation_engine = 'volca') -> None:
+    def __init__(self, log_file = None, translation_engine = 'volca', engine_id = None, engine_key = None) -> None:
         # This ipa mapping is done as the us syllable way.
         self.cmu_to_ipa_wiki = {
             "AA" : 'a',
@@ -125,8 +128,13 @@ class Phonetic(object):
         self.translation_engine = translation_engine
         if self.translation_engine == 'volca':
             self._translator = self._volca_translator
+            self.engine_id = engine_id
+            self.engine_key = engine_key
+            # TODO: verify missing
         elif self.translation_engine == 'youdao':
             self._translator = self._youdao_translator
+            self.engine_id = engine_id
+            self.engine_key = engine_key
         else:
             raise ValueError("Translation engine '{}' NOT supported.".format(self.translation_engine))
         
@@ -579,8 +587,8 @@ class Phonetic(object):
         from volcengine.ServiceInfo import ServiceInfo
         from volcengine.base.Service import Service
 
-        k_access_key = '' # https://console.volcengine.com/iam/keymanage/
-        k_secret_key = ''
+        k_access_key = self.engine_id # https://console.volcengine.com/iam/keymanage/
+        k_secret_key = self.engine_key
         k_service_info = \
             ServiceInfo('translate.volcengineapi.com',
             {'Content-Type': 'application/json'},
@@ -770,7 +778,7 @@ class Phonetic(object):
         else:
             return ret, self.translation_engine
 
-    def api_all_in_one(self, text, is_word = False) -> dict:
+    def api_all_in_one(self, text, is_word = False, to_json = False, json_file = None) -> dict:
         is_phrase = False
         is_sentence = False
         
@@ -781,7 +789,7 @@ class Phonetic(object):
         if is_word:
             syllables = self.api_word_phonetic(text)
             translation, translation_src = self.api_word_translation(text)
-            wavfile = self.api_word_phrase_tts(text)
+            wav_file = self.api_word_phrase_tts(text)
         else:
             space_cnt = 0
             for c in text:
@@ -799,11 +807,11 @@ class Phonetic(object):
             if is_phrase:
                 syllables = self.api_phrase_sentence_phonetic(text)
                 translation, translation_src = self.api_phrase_translation(text)
-                wavfile = self.api_word_phrase_tts(text)
+                wav_file = self.api_word_phrase_tts(text)
             else:
                 syllables = None
                 translation, translation_src = self.api_sentence_translation(text)
-                wavfile = self.api_sentence_tts(text)
+                wav_file = self.api_sentence_tts(text)
         
         result = {
                 'text' : text,
@@ -813,8 +821,12 @@ class Phonetic(object):
                 'translation' : translation,
                 'translation_src' : translation_src,
                 'syllables' : syllables,
-                'wavfile' : wavfile
+                'wav_file' : wav_file
             }
+        
+        if to_json and json_file:            
+            with open(json_file, 'a') as f:
+                json.dump(result, f, indent=2, ensure_ascii=False)
 
         return result
 
@@ -823,8 +835,17 @@ def main():
     system = platform.system()
     if system == 'Darwin':
         os.environ['PHONEMIZER_ESPEAK_LIBRARY'] = '/opt/homebrew/Cellar/espeak/1.48.04_1/lib/libespeak.dylib'
+    
+    try:
+        conf = yaml.safe_load(open('../conf.yaml','r'))
+        engine_id = conf['id']
+        engine_key = conf['key']
+    except:
+        print("Config file not exist!")
+        engine_id = None
+        engine_key = None    
 
-    phonetic = Phonetic()
+    phonetic = Phonetic(engine_id=engine_id, engine_key=engine_key)
     phonetic.load_letter_ipa_dict()
 
     # word
@@ -876,8 +897,9 @@ def main():
     # vegetable
     # explore
     
-    # mixed = ["vocabularies", "vocabulary", 'vocabularys', 'sjewoe', 'he hit him really hard, but jenjdenen', 'shake it off', 'can go abroad', 'make amednde']
-    mixed = words + phrases + texts
+    mixed = ["vocabularies", "vocabulary", 'vocabularys', 'sjewoe', 'he hit him really hard, but jenjdenen', 'shake it off', 'can go abroad', 'make amednde']
+    # mixed = ['vocabulary']
+    # mixed = words + phrases + texts
     word_cnt = 0
     character_cnt = 0
     for item in mixed:
