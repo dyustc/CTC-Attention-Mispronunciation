@@ -856,55 +856,62 @@ def main():
     # salesperson
     # vegetable
     # explore
-
     mixed = words + phrases + texts
+    # mixed = ["vocabularies", "John's"]
+    word_cnt = 0
+    character_cnt = 0
+    for item in mixed:
+        word_cnt += len(item.split(' '))
+        character_cnt += len(item)
+    print(word_cnt, character_cnt)
+    # exit()
+
+    start = time.time()
+    print(start - t0)
+
     for item in mixed:
         print(phonetic.api_all_in_one(item))
         print()
-    exit()
-
-    
-    start = time.time()
-    print(start - t0)
-    for word in words:        
-        syllables = phonetic.api_word_phonetic(word)
-        # phones = phonetic.api_word_phones_cmu(word)
-        text = phonetic.api_word_translation(word)
-        phonetic.api_word_phrase_tts(word)
+    # exit()
+    # for word in words:        
+    #     syllables = phonetic.api_word_phonetic(word)
+    #     # phones = phonetic.api_word_phones_cmu(word)
+    #     text = phonetic.api_word_translation(word)
+    #     phonetic.api_word_phrase_tts(word)
         
-        print(word, syllables)
-        # print(phones)
-        print(text)
-        print()
-    # exit()
-    for phrase in phrases:
-        syllables = phonetic.api_phrase_sentence_phonetic(phrase)
-        # phones = phonetic.api_phrase_sentence_phones_cmu(phrase)
-        text = phonetic.api_phrase_translation(phrase)
-        phonetic.api_word_phrase_tts(phrase)
-        print(phrase, syllables)
-        # print(phones)
-        print(text)
-        print()
-    # exit()
-    #sentence
-    for sentence in texts:
-        # syllables = phonetic.api_phrase_sentence_phonetic(sentence)
-        # phones = phonetic.api_phrase_sentence_phones_cmu(sentence)
-        text = phonetic.api_sentence_translation(sentence)
-        phonetic.api_sentence_tts(sentence)
-        # print(phonetic.phonemizer_sentence(sentence, True, False))
-        # print(phonetic.g2p(sentence, False))
-        print(sentence)
-        # print(syllables)
-        # print(phones)
-        print(text)
-        print("")
-        # print(phonetic.g2p(sentence, False))
-    # exit()
+    #     print(word, syllables)
+    #     # print(phones)
+    #     print(text)
+    #     print()
+    # # exit()
+    # for phrase in phrases:
+    #     syllables = phonetic.api_phrase_sentence_phonetic(phrase)
+    #     # phones = phonetic.api_phrase_sentence_phones_cmu(phrase)
+    #     text = phonetic.api_phrase_translation(phrase)
+    #     phonetic.api_word_phrase_tts(phrase)
+    #     print(phrase, syllables)
+    #     # print(phones)
+    #     print(text)
+    #     print()
+    # # exit()
+    # #sentence
+    # for sentence in texts:
+    #     # syllables = phonetic.api_phrase_sentence_phonetic(sentence)
+    #     # phones = phonetic.api_phrase_sentence_phones_cmu(sentence)
+    #     text = phonetic.api_sentence_translation(sentence)
+    #     phonetic.api_sentence_tts(sentence)
+    #     # print(phonetic.phonemizer_sentence(sentence, True, False))
+    #     # print(phonetic.g2p(sentence, False))
+    #     print(sentence)
+    #     # print(syllables)
+    #     # print(phones)
+    #     print(text)
+    #     print("")
+    #     # print(phonetic.g2p(sentence, False))
+    # # exit()
 
 
-    
+    print(word_cnt, character_cnt)
     print(time.time() - start)
     return 0
 
