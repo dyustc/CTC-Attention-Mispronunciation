@@ -698,7 +698,7 @@ class Phonetic(object):
         
         return p3
 
-    def api_word_phrase_tts(self, text, accent = 'Default', speed = None) -> str:
+    def api_word_phrase_tts(self, text, accent = 'Default', speed = None, output_path = None) -> str:
         assert accent in ['Default', 'US', 'BR', 'AU', 'IN']
         if not speed:
             speed = self.speed
@@ -715,13 +715,15 @@ class Phonetic(object):
             naming = parts[0].lower()
         else:
             naming = '_'.join([p.lower() for p in parts])
+        
+        if not output_path:
+            output_path = os.path.join(self.wav_dir, f'{naming.lower()}.wav')
 
-        output_path = os.path.join(self.wav_dir, f'{naming.lower()}.wav')
         model.tts_to_file(text, speaker_ids[f'EN-{accent}'], output_path, speed = speed)
 
         return output_path
     
-    def api_sentence_tts(self, text, accent = 'AU', speed = None) -> str:
+    def api_sentence_tts(self, text, accent = 'AU', speed = None, output_path = None) -> str:
         assert accent in ['Default', 'US', 'BR', 'AU', 'IN']
         if not speed:
             speed = self.speed + 0.1
@@ -741,7 +743,9 @@ class Phonetic(object):
             naming = '_'.join([p.lower() for p in parts[:3]])
 
         naming = 'sentence_' + naming + '_' + str(len(parts))
-        output_path = os.path.join(self.wav_dir, f'{naming.lower()}.wav')
+        if not output_path:
+            output_path = os.path.join(self.wav_dir, f'{naming.lower()}.wav')
+
         model.tts_to_file(text, speaker_ids[f'EN-{accent}'], output_path, speed = speed)
 
         return output_path
@@ -751,7 +755,7 @@ class Phonetic(object):
         if not translation:
             _translator = self._translator
             ret = _translator(word)
-            if ret == word:
+            if ret.lower() == word.lower():
                 return ret, 'failed'
             else:
                 return ret, self.translation_engine
@@ -763,7 +767,7 @@ class Phonetic(object):
         if not translation:
             _translator = self._translator
             ret = _translator(phrase)
-            if ret == phrase:
+            if ret.lower() == phrase.lower():
                 return ret, 'failed'
             else:
                 return ret, self.translation_engine
@@ -773,12 +777,12 @@ class Phonetic(object):
     def api_sentence_translation(self, sentence) -> str:
         _translator = self._translator
         ret = _translator(sentence)
-        if ret == sentence:
+        if ret.lower() == sentence.lower():
             return ret, 'failed'
         else:
             return ret, self.translation_engine
 
-    def api_all_in_one(self, text, is_word = False, to_json = False, json_file = None) -> dict:
+    def api_all_in_one(self, text, is_word = False, to_json = False, json_file = None, wav_file = None) -> dict:
         t0 = time.time()
         is_phrase = False
         is_sentence = False
@@ -793,7 +797,10 @@ class Phonetic(object):
             t2 = time.time()
             translation, translation_src = self.api_word_translation(text)
             t3 = time.time()
-            wav_file = self.api_word_phrase_tts(text)
+            if not wav_file:
+                wav_file = self.api_word_phrase_tts(text)
+            else:
+                wav_file = self.api_word_phrase_tts(text, output_path = wav_file)
             t4 = time.time()
         else:
             t1 = time.time()
@@ -815,14 +822,20 @@ class Phonetic(object):
                 t2 = time.time()
                 translation, translation_src = self.api_phrase_translation(text)
                 t3 = time.time()
-                wav_file = self.api_word_phrase_tts(text)
+                if not wav_file:
+                    wav_file = self.api_word_phrase_tts(text)
+                else:
+                    wav_file = self.api_word_phrase_tts(text, output_path = wav_file)
                 t4 = time.time()
             else:
                 syllables = None
                 t2 = time.time()
                 translation, translation_src = self.api_sentence_translation(text)
                 t3 = time.time()
-                wav_file = self.api_sentence_tts(text)
+                if not wav_file:
+                    wav_file = self.api_sentence_tts(text)
+                else:
+                    wav_file = self.api_sentence_tts(text, output_path = wav_file)
                 t4 = time.time()
         
         result = {
@@ -837,7 +850,7 @@ class Phonetic(object):
             }
 
         result['time'] = round((time.time() - t0) * 1000)
-        result['time_phonetic'] = round((t2 - t1) * 1000)
+        result['time_syllable'] = round((t2 - t1) * 1000)
         result['time_translation'] = round((t3 - t2) * 1000)
         result['time_tts'] = round((t4 - t3) * 1000)
         result['word_num'] = len(text.split(' '))
@@ -892,19 +905,25 @@ def main():
                'take chance', 'shake it off', 'shake off', 'be able to', 'go forward',
                'tell about', 'let it go', 'work out', 'wake up', 'whats up',
                'take care', 'at school', 'in time', 'on the clock', 'for that']
-    # phrases = ['work out']
-    texts = [
-        "I refuse to collect the refuse around here.", # homograph
-        "I'm an activationist.",
-        "The apple of my eye at 7 am run off.",
-    ] 
 
-    texts = [
+    sentences = [
+        "I refuse to collect the refuse around here.", # homograph
+        "The apple of my eye at 7 am run off.",
         "I catched the suspect in a supermarket.",
         "He isn't reasonable enough to suspect anyone of such a crime.",
-    ]
+        "The process of building a new language model consists of the following steps.",
+        'Chuck describes his wish to see a "better solution for everyone".',
+        "Whose storyline is going to come crashing down around them first: Jimmy or Mike?",
+        """
+        Jimmy and Kim attend Howard's memorial at HHM and learn the firm will downsize and rebrand. Howard's widow, Cheryl, questions them about the circumstances of Howard's death. Kim deflects blame by suggesting Cheryl failed to notice Howard's supposed drug problem, causing Cheryl to break down in tears.
+        """,
+        """
+        Scientists have theorized that during the Solar System's formation, Mars was created as the result of a random process of run-away accretion of material from the protoplanetary disk that orbited the Sun. Mars has many distinctive chemical features caused by its position in the Solar System. Elements with comparatively low boiling points, such as chlorine, phosphorus, and sulfur, are much more common on Mars than on Earth; these elements were probably pushed outward by the young Sun's energetic solar wind.
+        """,
+        "The vast upland region Tharsis contains several massive volcanoes, which include the shield volcano Olympus Mons. The edifice is over 600 km (370 mi) wide."
+    ] 
 
-    words = ['vocabulary', 'Gather', 'about', 'through', 'rough', 'content', 'magazine', 'accept', 'talked', 'bananas',
+    words = ['vocabulary', 'Gather', 'about', 'through', 'like', 'content', 'magazine', 'accept', 'talked', 'bananas',
              'wishes', 'OPPO', 'suburban', 'outstanding', 'geology', 'dashing', 'longtimenosee', 'phoneme', 'thorough', 'Toronto']
     
     # words = ['cat', 'cats', 'CAT', 'chance', 'really']
@@ -916,9 +935,10 @@ def main():
     # vegetable
     # explore
     
-    mixed = ["vocabularies", "vocabulary", 'vocabularys', 'sjewoe', 'he hit him really hard, but jenjdenen', 'shake it off', 'can go abroad', 'make amednde']
+    # mixed = ["vocabularies", "vocabulary", 'vocabularys', 'sjewoe', 'he hit him really hard, but jenjdenen', 'shake it off', 'can go abroad', 'make amednde']
     # mixed = ['vocabulary']
     # mixed = words + phrases + texts
+    mixed = sentences
     word_cnt = 0
     character_cnt = 0
     for item in mixed:
@@ -930,8 +950,12 @@ def main():
     start = time.time()
     print(start - t0)
 
-    for item in mixed:
-        print(phonetic.api_all_in_one(item))
+    for i in range(len(mixed)):
+        wavname = f'./wav/{i+1}.wav' 
+        txtname = f'./wav/{i+1}.txt'
+        item = mixed[i]
+        print(item, file=open(txtname, 'w'))
+        print(phonetic.api_all_in_one(item, wav_file=wavname))
         print()
     # exit()
     # for word in words:        

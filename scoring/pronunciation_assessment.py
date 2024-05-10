@@ -34,7 +34,8 @@ class PronunciationAssessment:
             # TODO: Bugfix catch 
             ret = subprocess.check_output(cmd, shell=True, stderr=subprocess.STDOUT, cwd = self.gop_dir)
         except subprocess.CalledProcessError as e:
-            err_msg = e.output
+            # TODO: e.output is too long for a error message
+            err_msg = str(e.output)
             ret = b''
         t2 = time.time()
 
