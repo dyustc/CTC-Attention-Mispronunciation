@@ -2,6 +2,8 @@ import os
 import sys
 import subprocess
 import json
+import time
+import soundfile as sf
 
 class PronunciationAssessment:
     def __init__(self):
@@ -12,6 +14,7 @@ class PronunciationAssessment:
     def assess_text(self, text, wav_file, to_json = False, json_file = None):
         # Assess the pronunciation of a single word
         # Implement your logic here
+        t0 = time.time()
         input_text = text.replace("\"", "'")
         cmd = ' '.join([self.gop_path, wav_file, '"'+input_text+'"'])
         ret_dict = {
@@ -26,12 +29,14 @@ class PronunciationAssessment:
 
         err_msg = None
 
+        t1 = time.time()
         try:
             # TODO: Bugfix catch 
             ret = subprocess.check_output(cmd, shell=True, stderr=subprocess.STDOUT, cwd = self.gop_dir)
         except subprocess.CalledProcessError as e:
             err_msg = e.output
             ret = b''
+        t2 = time.time()
 
         endpoint_dict = dict()
         final_dict = dict()
@@ -69,6 +74,11 @@ class PronunciationAssessment:
         ret_dict['raw_content'] = text
         ret_dict['wav_file'] = wav_file
         ret_dict['err_msg'] = err_msg
+        ret_dict['time'] = round((time.time() - t0) * 1000)
+        ret_dict['time_of_cmd'] = round((t2 - t1) * 1000)
+        data, sr = sf.read(wav_file)
+        wav_length = len(data) / sr
+        ret_dict['time_of_wav'] = round(wav_length * 1000)
 
         if to_json and json_file:
             with open(json_file, 'a') as f:

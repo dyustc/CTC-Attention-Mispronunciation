@@ -779,6 +779,7 @@ class Phonetic(object):
             return ret, self.translation_engine
 
     def api_all_in_one(self, text, is_word = False, to_json = False, json_file = None) -> dict:
+        t0 = time.time()
         is_phrase = False
         is_sentence = False
         
@@ -787,10 +788,15 @@ class Phonetic(object):
         is_word = is_word or ' ' not in text
 
         if is_word:
+            t1 = time.time()
             syllables = self.api_word_phonetic(text)
+            t2 = time.time()
             translation, translation_src = self.api_word_translation(text)
+            t3 = time.time()
             wav_file = self.api_word_phrase_tts(text)
+            t4 = time.time()
         else:
+            t1 = time.time()
             space_cnt = 0
             for c in text:
                 if c == ' ':
@@ -806,12 +812,18 @@ class Phonetic(object):
             
             if is_phrase:
                 syllables = self.api_phrase_sentence_phonetic(text)
+                t2 = time.time()
                 translation, translation_src = self.api_phrase_translation(text)
+                t3 = time.time()
                 wav_file = self.api_word_phrase_tts(text)
+                t4 = time.time()
             else:
                 syllables = None
+                t2 = time.time()
                 translation, translation_src = self.api_sentence_translation(text)
+                t3 = time.time()
                 wav_file = self.api_sentence_tts(text)
+                t4 = time.time()
         
         result = {
                 'text' : text,
@@ -821,9 +833,16 @@ class Phonetic(object):
                 'translation' : translation,
                 'translation_src' : translation_src,
                 'syllables' : syllables,
-                'wav_file' : wav_file
+                'wav_file' : wav_file,
             }
-        
+
+        result['time'] = round((time.time() - t0) * 1000)
+        result['time_phonetic'] = round((t2 - t1) * 1000)
+        result['time_translation'] = round((t3 - t2) * 1000)
+        result['time_tts'] = round((t4 - t3) * 1000)
+        result['word_num'] = len(text.split(' '))
+        result['character_num'] = len(text)
+     
         if to_json and json_file:            
             with open(json_file, 'a') as f:
                 json.dump(result, f, indent=2, ensure_ascii=False)

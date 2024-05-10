@@ -3,6 +3,7 @@ import platform
 import os
 import sys
 import yaml
+import soundfile as sf
 
 from scoring.pronunciation_assessment import PronunciationAssessment
 from dict.phonetic_dict import Phonetic
@@ -25,19 +26,33 @@ def main():
     phonetic = Phonetic(engine_id=engine_id, engine_key=engine_key)
     assessment = PronunciationAssessment()
 
-    txts = ["vocabulary", "magnets can be found on a can opener."]
+    txts = [
+        "vocabulary", 
+        "magnets can be found on a can opener.", 
+        'get away with', 
+        'on the clock',
+        "magnets can't be found on a can opener.",
+        'dashing'
+        ]
     wav_files = [
         '/Users/daiyi/work/ramp/CTC-Attention-Mispronunciation/egs/vocabulary/default_0.7/1.wav',
-        '/Users/daiyi/work/ramp/CTC-Attention-Mispronunciation/egs/sentence/single/my.wav'
+        '/Users/daiyi/work/ramp/CTC-Attention-Mispronunciation/egs/sentence/single/my.wav',
+        '/Users/daiyi/work/ramp/CTC-Attention-Mispronunciation/egs/phrase/default_0.7/get_away_with.wav',
+        '/Users/daiyi/work/ramp/CTC-Attention-Mispronunciation/egs/phrase/default_0.7/on_the_clock.wav',
+        '/Users/daiyi/work/ramp/CTC-Attention-Mispronunciation/egs/sentence/single/男1a.wav',
+        '/Users/daiyi/work/ramp/CTC-Attention-Mispronunciation/egs/vocabulary/default_0.7/16.wav'
     ]
     mixed = dict(zip(wav_files, txts))
     
     
     word_cnt = 0
     character_cnt = 0
+    wav_length = 0
     for wav, txt in mixed.items():
         word_cnt += len(txt.split(' '))
         character_cnt += len(txt)
+        data, sr = sf.read(wav)
+        wav_length += len(data) / sr
 
     t0 = time.time()
     for wav, txt in mixed.items():
@@ -55,6 +70,7 @@ def main():
     t2 = time.time()
     print('word number: ',  word_cnt)
     print('character number: ', character_cnt)
+    print('wav length: ', wav_length)
     print('init time:', t0 - start)
     print('dict time:', t1 - t0)
     print('assessment time:', t2 - t1)
