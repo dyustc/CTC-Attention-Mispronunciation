@@ -11,6 +11,7 @@ class PronunciationAssessment:
         self.gop_dir = os.path.normpath(os.path.dirname(__file__))
         self.gop_path = './rt_gop'
     
+    # TODO: renaming and add is_word param
     def assess_text(self, text, wav_file, to_json = False, json_file = None):
         # Assess the pronunciation of a single word
         # Implement your logic here
@@ -39,7 +40,7 @@ class PronunciationAssessment:
             ret = b''
         t2 = time.time()
 
-        endpoint_dict = dict()
+        endpoint_dicts = []
         final_dict = dict()
         # TODO: warning search
         parts = ret.split(b'[SEP]\n')
@@ -49,28 +50,46 @@ class PronunciationAssessment:
                 d = json.loads(dict_str)
                 if d.get('output_type', None) == 'endpoint':
                     endpoint_dict = d
+                    endpoint_dicts.append(endpoint_dict)
                 
                 if d.get('output_type', None) == 'final':
                     final_dict = d
             except json.JSONDecodeError:
                 continue
 
-        if endpoint_dict:
-            ret_dict = endpoint_dict
-            ret_dict['output_type'] = 'final'
+        if final_dict:
+            ret_dict = final_dict
         else:
-            if final_dict:
-                ret_dict = final_dict
+            err_msg = 'no final dict'
+        
+        sentence_content = ''
+        words = []
+        for endpoint_dict in endpoint_dicts:
+            sentence_content += endpoint_dict['sentence_content'] + ' '
+            words += endpoint_dict['words']
+        
+        if sentence_content:
+            ret_dict['sentence_content'] = sentence_content + ret_dict['sentence_content']
+        
+        if words:
+            ret_dict['words'] = words + ret_dict['words']
 
         ret_dict['total_accuracy'] = final_dict.get('sentence_accuracy', None)
         ret_dict['total_fluency'] = final_dict.get('sentence_fluency', None)
         ret_dict['total_integrity'] = final_dict.get('sentence_integrity', None)
 
+        # TODO: fix for accuracy is on debate
+        if ret_dict['total_accuracy'] and ret_dict['total_integrity']:
+            ret_dict['total_accuracy'] = ret_dict['total_accuracy'] * 100 / ret_dict['total_integrity']
+            ret_dict['total_accuracy'] = min(100, ret_dict['total_accuracy'])
+        
+        # TODO: for word, total score is total accuracy
         if ret_dict['total_accuracy'] and ret_dict['total_fluency'] and ret_dict['total_integrity']:
-            ret_dict['total_score'] = 0.7 * ret_dict['total_accuracy'] + 0.3 * ret_dict['total_fluency']
+            ret_dict['total_score'] = 0.5 * ret_dict['total_accuracy'] + 0.3 * ret_dict['total_fluency'] + 0.2 * ret_dict['total_integrity']
         else:
             ret_dict['total_score'] = None
-          
+        
+        ret_dict['endpoint_num'] = len(endpoint_dicts)
         ret_dict['ref_content'] = input_text
         ret_dict['raw_content'] = text
         ret_dict['wav_file'] = wav_file

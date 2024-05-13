@@ -27,7 +27,7 @@ def main():
     phonetic = Phonetic(engine_id=engine_id, engine_key=engine_key)
     assessment = PronunciationAssessment()
 
-    test_dir_path = '/Users/daiyi/work/ramp/CTC-Attention-Mispronunciation/sentence'
+    test_dir_path = '/data2/daiyi/code/CTC-Attention-Mispronunciation/sentence'
     mixed = dict()
     for file in os.listdir(test_dir_path):
         if file.endswith('.wav'):
@@ -80,7 +80,7 @@ def main():
         word_cnt += len(txt.split(' '))
         character_cnt += len(txt)
         data, sr = sf.read(wav)
-        wav_length += len(data) / sr
+        wav_length += round(len(data) / sr * 1000)
 
     t0 = time.time()
     for wav, txt in mixed.items():
@@ -98,6 +98,8 @@ def main():
 
     for wav, txt in mixed.items():
         json_file = wav.replace('.wav', '.json')
+        # if os.path.exists(json_file):
+        #     os.remove(json_file)
         result = assessment.assess_text(txt, wav, to_json=True, json_file=json_file)
         assessment_time_in_milli += result.get('time', 0)
         rt_gop_time += result.get('time_of_cmd', 0)
@@ -106,13 +108,13 @@ def main():
     print('word number: ',  word_cnt)
     print('character number: ', character_cnt)
     print('wav length: ', wav_length)
-    print('init time:', t0 - start)
-    print('dict time:', t1 - t0)
+    print('init time:', round((t0 - start) * 1000))
+    print('dict time:', round((t1 - t0) * 1000))
     print('dict time in milli:', dict_time_in_milli)
     print('tts time:', tts_time)
     print('translation time:', translation_time)
     print('syllable time:', syllable_time)
-    print('assessment time:', t2 - t1)
+    print('assessment time:', round((t2 - t1) * 1000))
     print('assessment time in milli:', assessment_time_in_milli)
     print('rt_gop time:', rt_gop_time)
 
